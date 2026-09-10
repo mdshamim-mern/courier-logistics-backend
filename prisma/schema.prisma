@@ -1,0 +1,201 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  COURIER
+  CUSTOMER
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  DELETED
+}
+
+enum AuthProvider {
+  CREDENTIAL
+  GOOGLE
+}
+
+enum ShipmentStatus {
+  PENDING
+  ASSIGNED
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentGateway {
+  BKASH
+  STRIPE
+  SSLCOMMERZ
+}
+
+model User {
+  id                 String       @id @default(uuid())
+  name               String
+  email              String       @unique
+  password           String?
+  googleId           String?      @unique
+  authProvider       AuthProvider @default(CREDENTIAL)
+  role               Role         @default(CUSTOMER)
+  status             UserStatus   @default(ACTIVE)
+  emailVerified      Boolean      @default(false)
+  needPasswordChange Boolean      @default(false)
+  contactNumber      String?
+  imageUrl           String?
+  imagePublicId      String?
+  isDeleted          Boolean      @default(false)
+  deletedAt          DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  customerProfile Customer?
+  courierProfile  Courier?
+  sentShipments   Shipment[] @relation("SenderShipments")
+  deliveries      Shipment[] @relation("CourierDeliveries")
+  auditLogs       AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@index([isDeleted])
+  @@map("users")
+}
+
+model Customer {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  contactNumber String?
+  address       String?
+  isDeleted     Boolean   @default(false)
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("customers")
+}
+
+model Courier {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  contactNumber String
+  vehicleType   String?
+  vehicleNumber String?
+  isAvailable   Boolean   @default(true)
+  currentHubId  String?
+  isDeleted     Boolean   @default(false)
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hub  Hub? @relation(fields: [currentHubId], references: [id], onDelete: SetNull)
+
+  @@map("couriers")
+}
+
+model Hub {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  location  String
+  address   String
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  couriers             Courier[]
+  originShipments      Shipment[] @relation("OriginHub")
+  destinationShipments Shipment[] @relation("DestinationHub")
+
+  @@map("hubs")
+}
+
+model Shipment {
+  id                String         @id @default(uuid())
+  trackingId        String         @unique
+  senderId          String
+  courierId         String?
+  originHubId       String?
+  destinationHubId  String?
+  receiverName      String
+  receiverPhone     String
+  receiverAddress   String
+  weight            Decimal        @db.Decimal(10, 2)
+  price             Decimal        @db.Decimal(10, 2)
+  status            ShipmentStatus @default(PENDING)
+  estimatedDelivery DateTime?
+  isDeleted         Boolean        @default(false)
+  deletedAt         DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  sender         User     @relation("SenderShipments", fields: [senderId], references: [id])
+  courier        User?    @relation("CourierDeliveries", fields: [courierId], references: [id])
+  originHub      Hub?     @relation("OriginHub", fields: [originHubId], references: [id])
+  destinationHub Hub?     @relation("DestinationHub", fields: [destinationHubId], references: [id])
+  payment        Payment?
+
+  @@index([trackingId])
+  @@index([senderId])
+  @@index([courierId])
+  @@index([status])
+  @@map("shipments")
+}
+
+model Payment {
+  id             String         @id @default(uuid())
+  shipmentId     String         @unique
+  amount         Decimal        @db.Decimal(10, 2)
+  currency       String         @default("BDT")
+  paymentGateway PaymentGateway @default(BKASH)
+  transactionId  String?        @unique
+  status         PaymentStatus  @default(UNPAID)
+  payerReference String?
+  gatewayResponse Json?
+  paidAt         DateTime?
+  isDeleted      Boolean        @default(false)
+  deletedAt      DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@map("payments")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String
+  entityId   String
+  entityType String
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([entityId, entityType])
+  @@map("audit_logs")
+}
