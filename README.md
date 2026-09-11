@@ -101,35 +101,39 @@ Here is a summary of the available routes. Note: Most routes require a `Bearer T
    git clone [https://github.com/mdshamim-mern/courier-logistics-backend.git](https://github.com/mdshamim-mern/courier-logistics-backend.git)
    cd courier-logistics-backend
 
-1.Install dependencies:
+2. **Install dependencies:**
+   ```bash
+   npm install
+   # or
+   bun install
+   ```
 
-npm install
-# or
-bun install
+3. **Set up Environment Variables:**
+   Create a `.env` file in the root directory and add your credentials:
+   ```env
+   NODE_ENV=development
+   PORT=5000
+   DATABASE_URL="postgresql://user:password@host:port/dbname?schema=public"
+   JWT_ACCESS_SECRET="your_secret_key"
+   JWT_ACCESS_EXPIRES_IN="1d"
+   CLOUDINARY_CLOUD_NAME="your_cloud_name"
+   CLOUDINARY_API_KEY="your_api_key"
+   CLOUDINARY_API_SECRET="your_api_secret"
+   BKASH_APP_KEY="your_bkash_key"
+   BKASH_APP_SECRET="your_bkash_secret"
+   ```
 
-2.Set up Environment Variables:
-Create a .env file in the root directory and add your credentials:
+4. **Generate Prisma Client & Push Schema:**
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
 
-Code snippet
-NODE_ENV=development
-PORT=5000
-DATABASE_URL="postgresql://user:password@host:port/dbname?schema=public"
-JWT_ACCESS_SECRET="your_secret_key"
-JWT_ACCESS_EXPIRES_IN="1d"
-CLOUDINARY_CLOUD_NAME="your_cloud_name"
-CLOUDINARY_API_KEY="your_api_key"
-CLOUDINARY_API_SECRET="your_api_secret"
-BKASH_APP_KEY="your_bkash_key"
-BKASH_APP_SECRET="your_bkash_secret"
+5. **Start the server:**
+   ```bash
+   npm run dev
+   ```
+   The API will be available at `http://localhost:5000/api/v1`
 
-3.Generate Prisma Client & Push Schema:
-
-npx prisma generate
-npx prisma db push
-
-4.Start the server:
-
-npm run dev
-The API will be available at http://localhost:5000/api/v1
-
-Developed with ❤️ by Md Shamim.
+---
+*Developed with ❤️ by [Md Shamim](https://github.com/mdshamim-mern).*
