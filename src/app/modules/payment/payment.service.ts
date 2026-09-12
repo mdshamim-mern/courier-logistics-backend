@@ -151,7 +151,6 @@ const executePayment = async (paymentID: string, status: string) => {
     if (paymentRecord) {
       await tx.auditLog.create({
         data: {
-          userId: "SYSTEM",
           action: "PAYMENT_SUCCESS",
           entityId: paymentRecord.shipmentId,
           entityType: "SHIPMENT",
