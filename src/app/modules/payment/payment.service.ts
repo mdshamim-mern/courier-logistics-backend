@@ -185,9 +185,11 @@ const getPayments = async (query: any, user: any) => {
 
   const total = await prisma.payment.count({ where: { AND: andConditions } });
 
+  const safeData = result.map(({ gatewayResponse, ...rest }) => rest);
+
   return {
     meta: { page: Number(page), limit: Number(limit), total, totalPages: Math.ceil(total / Number(limit)) },
-    data: result,
+    data: safeData,
   };
 };
 
