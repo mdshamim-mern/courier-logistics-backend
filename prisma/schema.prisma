@@ -67,11 +67,11 @@ model User {
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 
-  customerProfile Customer?
-  courierProfile  Courier?
-  sentShipments   Shipment[] @relation("SenderShipments")
-  deliveries      Shipment[] @relation("CourierDeliveries")
-  auditLogs       AuditLog[]
+  customer       Customer?
+  courier        Courier?
+  sentShipments  Shipment[] @relation("SenderShipments")
+  deliveries     Shipment[] @relation("CourierDeliveries")
+  auditLogs      AuditLog[]
 
   @@index([email])
   @@index([role])
@@ -107,8 +107,8 @@ model Courier {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  hub  Hub? @relation(fields: [currentHubId], references: [id], onDelete: SetNull)
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hub  Hub?  @relation(fields: [currentHubId], references: [id], onDelete: SetNull)
 
   @@map("couriers")
 }
@@ -163,20 +163,20 @@ model Shipment {
 }
 
 model Payment {
-  id              String         @id @default(uuid())
-  shipmentId      String         @unique
-  amount          Decimal        @db.Decimal(10, 2)
-  currency        String         @default("BDT")
-  paymentGateway  PaymentGateway @default(BKASH)
-  transactionId   String?        @unique
-  status          PaymentStatus  @default(UNPAID)
-  payerReference  String?
-  gatewayResponse Json?
-  paidAt          DateTime?
-  isDeleted       Boolean        @default(false)
-  deletedAt       DateTime?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id               String         @id @default(uuid())
+  shipmentId       String         @unique
+  amount           Decimal        @db.Decimal(10, 2)
+  currency         String         @default("BDT")
+  paymentGateway   PaymentGateway @default(BKASH)
+  transactionId    String?        @unique
+  status           PaymentStatus  @default(UNPAID)
+  payerReference   String?
+  gatewayResponse  Json?
+  paidAt           DateTime?
+  isDeleted        Boolean        @default(false)
+  deletedAt        DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
 

@@ -105,7 +105,7 @@ const getSingleShipment = async (id: string, user: any) => {
 
   if (
     (user.role === "CUSTOMER" && shipment.senderId !== user.userId) ||
-    (user.role === "COURIER" && shipment.courierId !== user.userId && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")
+    (user.role === "COURIER" && shipment.courierId !== user.userId && user.role !== "ADMIN")
   ) {
     throw new AppError(httpStatus.FORBIDDEN, "You do not have permission to view this shipment");
   }
@@ -120,10 +120,37 @@ const assignCourier = async (shipmentId: string, courierId: string, adminId: str
     throw new AppError(httpStatus.NOT_FOUND, "Shipment not found");
   }
 
-  const courier = await prisma.user.findUnique({ where: { id: courierId, role: "COURIER", isDeleted: false } });
+  if (shipment.courierId) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Shipment is already assigned to a courier");
+  }
 
-  if (!courier) {
-    throw new AppError(httpStatus.NOT_FOUND, "Courier not found");
+  const courierProfile = await prisma.courier.findFirst({ 
+    where: { userId: courierId },
+    include: { user: true }
+  });
+
+  if (!courierProfile || !courierProfile.user || courierProfile.user.status !== "ACTIVE" || courierProfile.user.isDeleted) {
+    throw new AppError(httpStatus.NOT_FOUND, "Active courier not found");
+  }
+
+  if (!courierProfile.isAvailable) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Courier is currently unavailable");
+  }
+
+  if (shipment.originHubId !== courierProfile.currentHubId) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Courier is not assigned to the shipment's origin hub");
+  }
+
+  const activeShipmentsCount = await prisma.shipment.count({
+    where: {
+      courierId: courierId,
+      status: ShipmentStatus.ASSIGNED,
+      isDeleted: false,
+    },
+  });
+
+  if (activeShipmentsCount >= 5) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Courier has reached the maximum active delivery limit");
   }
 
   const result = await prisma.$transaction(async (tx) => {

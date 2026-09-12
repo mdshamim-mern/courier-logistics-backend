@@ -15,26 +15,26 @@ router.post(
 
 router.get(
   "/",
-  auth("ADMIN", "SUPER_ADMIN", "CUSTOMER", "COURIER"),
+  auth("ADMIN", "CUSTOMER", "COURIER"),
   ShipmentController.getAllShipments
 );
 
 router.get(
   "/:id",
-  auth("ADMIN", "SUPER_ADMIN", "CUSTOMER", "COURIER"),
+  auth("ADMIN", "CUSTOMER", "COURIER"),
   ShipmentController.getSingleShipment
 );
 
 router.patch(
   "/:id/assign",
-  auth("ADMIN", "SUPER_ADMIN"),
+  auth("ADMIN"),
   validateRequest(ShipmentValidation.AssignCourierSchema),
   ShipmentController.assignCourier
 );
 
 router.patch(
   "/:id/status",
-  auth("ADMIN", "SUPER_ADMIN", "COURIER"),
+  auth("ADMIN", "COURIER"),
   validateRequest(ShipmentValidation.UpdateShipmentStatusSchema),
   ShipmentController.updateShipmentStatus
 );
