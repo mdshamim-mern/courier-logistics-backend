@@ -1,3 +1,4 @@
+import { Role } from "@prisma/client";
 import express from "express";
 import auth from "../../middlewares/auth";
 import validateRequest from "../../middlewares/validateRequest";
@@ -8,33 +9,33 @@ const router = express.Router();
 
 router.post(
   "/",
-  auth("CUSTOMER"),
+  auth(Role.CUSTOMER),
   validateRequest(ShipmentValidation.CreateShipmentSchema),
   ShipmentController.createShipment
 );
 
 router.get(
   "/",
-  auth("ADMIN", "CUSTOMER", "COURIER"),
+  auth(Role.ADMIN, Role.CUSTOMER, Role.COURIER),
   ShipmentController.getAllShipments
 );
 
 router.get(
   "/:id",
-  auth("ADMIN", "CUSTOMER", "COURIER"),
+  auth(Role.ADMIN, Role.CUSTOMER, Role.COURIER),
   ShipmentController.getSingleShipment
 );
 
 router.patch(
   "/:id/assign",
-  auth("ADMIN"),
+  auth(Role.ADMIN),
   validateRequest(ShipmentValidation.AssignCourierSchema),
   ShipmentController.assignCourier
 );
 
 router.patch(
   "/:id/status",
-  auth("ADMIN", "COURIER"),
+  auth(Role.ADMIN, Role.COURIER),
   validateRequest(ShipmentValidation.UpdateShipmentStatusSchema),
   ShipmentController.updateShipmentStatus
 );
