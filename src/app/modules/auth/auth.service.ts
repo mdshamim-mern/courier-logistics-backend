@@ -321,6 +321,26 @@ const resetPassword = async (payload: IResetPasswordPayload) => {
   return null;
 };
 
+const logoutUser = async (token: string, userId: string) => {
+  if (!token) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Token is required for logout");
+  }
+
+  await redisClient.setEx(`blacklist:${token}`, 86400, "revoked");
+
+  await prisma.auditLog.create({
+    data: {
+      action: "LOGOUT",
+      userId: userId,
+      entityId: userId,
+      entityType: "USER",
+      details: "User successfully logged out and token blacklisted",
+    },
+  });
+
+  return null;
+};
+
 export const AuthService = {
   registerCustomer,
   verifyEmail,
@@ -329,4 +349,5 @@ export const AuthService = {
   googleLogin,
   forgotPassword,
   resetPassword,
+  logoutUser,
 };

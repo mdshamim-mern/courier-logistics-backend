@@ -4,6 +4,7 @@ import httpStatus from "http-status";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import config from "../config";
 import { AppError } from "../errors/AppError";
+import { redisClient } from "../utils/redis";
 
 const prisma = new PrismaClient();
 
@@ -23,6 +24,11 @@ const auth = (...requiredRoles: string[]) => {
 
       if (!token) {
         throw new AppError(httpStatus.UNAUTHORIZED, "You are not authorized!");
+      }
+
+      const isBlacklisted = await redisClient.get(`blacklist:${token}`);
+      if (isBlacklisted) {
+        throw new AppError(httpStatus.UNAUTHORIZED, "You are logged out. Please log in again.");
       }
 
       const decoded = jwt.verify(

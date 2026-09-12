@@ -137,6 +137,32 @@ const resetPassword = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const logout = catchAsync(async (req: Request, res: Response) => {
+  const token = req.cookies?.accessToken || req.headers.authorization?.split(" ")[1];
+  const userId = req.user?.userId;
+
+  await AuthService.logoutUser(token as string, userId);
+
+  res.clearCookie("accessToken", {
+    secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
+    sameSite: "none",
+  });
+
+  res.clearCookie("refreshToken", {
+    secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
+    sameSite: "none",
+  });
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Logged out successfully",
+    data: null,
+  });
+});
+
 export const AuthController = {
   registerCustomer,
   verifyEmail,
@@ -145,4 +171,5 @@ export const AuthController = {
   googleLogin,
   forgotPassword,
   resetPassword,
+  logout,
 };

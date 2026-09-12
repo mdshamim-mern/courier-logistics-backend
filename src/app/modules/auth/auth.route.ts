@@ -1,4 +1,6 @@
+import { Role } from "@prisma/client";
 import express from "express";
+import auth from "../../middlewares/auth";
 import validateRequest from "../../middlewares/validateRequest";
 import { AuthController } from "./auth.controller";
 import { AuthValidation } from "./auth.validation";
@@ -44,6 +46,12 @@ router.post(
   "/reset-password",
   validateRequest(AuthValidation.ResetPasswordZodSchema),
   AuthController.resetPassword
+);
+
+router.post(
+  "/logout",
+  auth(Role.ADMIN, Role.COURIER, Role.CUSTOMER),
+  AuthController.logout
 );
 
 export const AuthRoutes = router;
