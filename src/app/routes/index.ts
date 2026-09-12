@@ -2,6 +2,7 @@ import express from "express";
 import { AdminRoutes } from "../modules/admin/admin.route";
 import { AuditLogRoutes } from "../modules/auditLog/auditLog.route";
 import { AuthRoutes } from "../modules/auth/auth.route";
+import { CourierRoutes } from "../modules/courier/courier.route";
 import { HubRoutes } from "../modules/hub/hub.route";
 import { PaymentRoutes } from "../modules/payment/payment.route";
 import { ShipmentRoutes } from "../modules/shipment/shipment.route";
@@ -37,6 +38,10 @@ const moduleRoutes = [
   {
     path: "/admin",
     route: AdminRoutes,
+  },
+  {
+    path: "/couriers",
+    route: CourierRoutes,
   },
 ];
 

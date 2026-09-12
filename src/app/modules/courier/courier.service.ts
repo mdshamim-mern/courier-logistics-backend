@@ -77,7 +77,7 @@ const getAllCouriers = async (filters: ICourierFilterRequest) => {
       user: {
         select: { id: true, name: true, email: true, status: true, role: true },
       },
-      currentHub: true,
+      hub: true,
     },
   });
 
@@ -91,7 +91,7 @@ const getCourierDetails = async (id: string) => {
       user: {
         select: { id: true, name: true, email: true, status: true, role: true },
       },
-      currentHub: true,
+      hub: true,
     },
   });
 
@@ -116,7 +116,7 @@ const updateCourierProfile = async (id: string, payload: ICourierUpdate) => {
       user: {
         select: { id: true, name: true, email: true },
       },
-      currentHub: true,
+      hub: true,
     },
   });
 
@@ -137,7 +137,7 @@ const getCourierHistoryAndEarnings = async (courierId: string) => {
 
   const earningsData = await prisma.shipment.aggregate({
     _sum: {
-      price: true, 
+      price: true,
     },
     where: {
       courierId,
