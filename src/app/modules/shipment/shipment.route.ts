@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.post(
   "/",
-  auth(Role.CUSTOMER),
+  auth(Role.ADMIN, Role.CUSTOMER),
   validateRequest(ShipmentValidation.CreateShipmentSchema),
   ShipmentController.createShipment
 );
