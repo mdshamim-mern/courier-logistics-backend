@@ -6,19 +6,19 @@ const router = express.Router();
 
 router.get(
   "/dashboard-stats",
-  auth("ADMIN", "SUPER_ADMIN"),
+  auth("ADMIN"),
   AdminController.getDashboardStats
 );
 
 router.get(
   "/users",
-  auth("ADMIN", "SUPER_ADMIN"),
+  auth("ADMIN"),
   AdminController.getAllUsers
 );
 
 router.patch(
   "/users/:id/status",
-  auth("ADMIN", "SUPER_ADMIN"),
+  auth("ADMIN"),
   AdminController.updateUserStatus
 );
 

@@ -4,7 +4,7 @@ const createCourierZodSchema = z.object({
   body: z.object({
     name: z.string({ required_error: "Name is required" }),
     email: z.string({ required_error: "Email is required" }).email(),
-    password: z.string().optional(),
+    password: z.string({ required_error: "Password is required" }),
     contactNumber: z.string({ required_error: "Contact number is required" }),
     vehicleType: z.string().optional(),
     vehicleNumber: z.string().optional(),

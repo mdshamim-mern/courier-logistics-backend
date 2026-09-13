@@ -100,10 +100,6 @@ const updateUserStatus = async (userId: string, status: UserStatus, adminId: str
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
 
-  if (user.role === Role.SUPER_ADMIN) {
-    throw new AppError(httpStatus.FORBIDDEN, "Cannot modify Super Admin status");
-  }
-
   const result = await prisma.$transaction(async (tx) => {
     const updatedUser = await tx.user.update({
       where: { id: userId },

@@ -16,8 +16,7 @@ const createCourier = async (payload: ICourierCreate) => {
     throw new AppError(httpStatus.CONFLICT, "User with this email already exists");
   }
 
-  const defaultPassword = payload.password || "Courier@1234";
-  const hashedPassword = await bcrypt.hash(defaultPassword, Number(config.bcrypt_salt_rounds));
+  const hashedPassword = await bcrypt.hash(payload.password, Number(config.bcrypt_salt_rounds));
 
   const result = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
@@ -50,8 +49,11 @@ const createCourier = async (payload: ICourierCreate) => {
 };
 
 const getAllCouriers = async (filters: ICourierFilterRequest) => {
-  const { isAvailable, searchTerm } = filters;
-  const andConditions: any[] = [];
+  const { isAvailable, searchTerm, page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc" } = filters;
+  const skip = (Number(page) - 1) * Number(limit);
+  const take = Number(limit);
+
+  const andConditions: any[] = [{ user: { isDeleted: false } }];
 
   if (searchTerm) {
     andConditions.push({
@@ -73,6 +75,9 @@ const getAllCouriers = async (filters: ICourierFilterRequest) => {
 
   const result = await prisma.courier.findMany({
     where: whereConditions,
+    skip,
+    take,
+    orderBy: { [sortBy]: sortOrder },
     include: {
       user: {
         select: { id: true, name: true, email: true, status: true, role: true },
@@ -81,10 +86,20 @@ const getAllCouriers = async (filters: ICourierFilterRequest) => {
     },
   });
 
-  return result;
+  const total = await prisma.courier.count({ where: whereConditions });
+
+  return {
+    meta: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      totalPages: Math.ceil(total / take),
+    },
+    data: result,
+  };
 };
 
-const getCourierDetails = async (id: string) => {
+const getCourierDetails = async (id: string, user: any) => {
   const result = await prisma.courier.findUnique({
     where: { id },
     include: {
@@ -99,14 +114,22 @@ const getCourierDetails = async (id: string) => {
     throw new AppError(httpStatus.NOT_FOUND, "Courier not found");
   }
 
+  if (user.role === Role.COURIER && result.userId !== user.userId) {
+    throw new AppError(httpStatus.FORBIDDEN, "You are not authorized to view this courier profile");
+  }
+
   return result;
 };
 
-const updateCourierProfile = async (id: string, payload: ICourierUpdate) => {
+const updateCourierProfile = async (id: string, payload: ICourierUpdate, user: any) => {
   const courier = await prisma.courier.findUnique({ where: { id } });
 
   if (!courier) {
     throw new AppError(httpStatus.NOT_FOUND, "Courier not found");
+  }
+
+  if (user.role === Role.COURIER && courier.userId !== user.userId) {
+    throw new AppError(httpStatus.FORBIDDEN, "You are not authorized to update this courier profile");
   }
 
   const result = await prisma.courier.update({
@@ -123,11 +146,15 @@ const updateCourierProfile = async (id: string, payload: ICourierUpdate) => {
   return result;
 };
 
-const getCourierHistoryAndEarnings = async (courierId: string) => {
+const getCourierHistoryAndEarnings = async (courierId: string, user: any) => {
   const courier = await prisma.courier.findUnique({ where: { id: courierId } });
 
   if (!courier) {
     throw new AppError(httpStatus.NOT_FOUND, "Courier not found");
+  }
+
+  if (user.role === Role.COURIER && courier.userId !== user.userId) {
+    throw new AppError(httpStatus.FORBIDDEN, "You are not authorized to view this courier history");
   }
 
   const shipments = await prisma.shipment.findMany({

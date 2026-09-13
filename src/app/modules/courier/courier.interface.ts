@@ -1,7 +1,7 @@
 export interface ICourierCreate {
   name: string;
   email: string;
-  password?: string;
+  password: string;
   contactNumber: string;
   vehicleType?: string;
   vehicleNumber?: string;
@@ -18,4 +18,8 @@ export interface ICourierUpdate {
 export interface ICourierFilterRequest {
   isAvailable?: string | boolean;
   searchTerm?: string;
+  page?: string | number;
+  limit?: string | number;
+  sortBy?: string;
+  sortOrder?: string;
 }

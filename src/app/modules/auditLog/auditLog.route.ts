@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.get(
   "/",
-  auth("ADMIN", "SUPER_ADMIN"),
+  auth("ADMIN"),
   AuditLogController.getAuditLogs
 );
 

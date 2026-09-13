@@ -7,13 +7,13 @@ const router = express.Router();
 
 router.get(
   "/me",
-  auth("CUSTOMER", "COURIER", "ADMIN", "SUPER_ADMIN"),
+  auth("CUSTOMER", "COURIER", "ADMIN"),
   UserController.getMe
 );
 
 router.patch(
   "/profile-image",
-  auth("CUSTOMER", "COURIER", "ADMIN", "SUPER_ADMIN"),
+  auth("CUSTOMER", "COURIER", "ADMIN"),
   upload.single("profileImage"),
   UserController.updateProfileImage
 );

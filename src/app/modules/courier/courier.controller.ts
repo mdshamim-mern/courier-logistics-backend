@@ -20,13 +20,14 @@ const getAllCouriers = catchAsync(async (req: Request, res: Response) => {
     statusCode: httpStatus.OK,
     success: true,
     message: "Couriers retrieved successfully",
-    data: result,
+    meta: result.meta,
+    data: result.data,
   });
 });
 
 const getCourierDetails = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await CourierService.getCourierDetails(id);
+  const result = await CourierService.getCourierDetails(id, req.user);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -37,7 +38,7 @@ const getCourierDetails = catchAsync(async (req: Request, res: Response) => {
 
 const updateCourierProfile = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await CourierService.updateCourierProfile(id, req.body);
+  const result = await CourierService.updateCourierProfile(id, req.body, req.user);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -48,7 +49,7 @@ const updateCourierProfile = catchAsync(async (req: Request, res: Response) => {
 
 const getCourierHistoryAndEarnings = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await CourierService.getCourierHistoryAndEarnings(id);
+  const result = await CourierService.getCourierHistoryAndEarnings(id, req.user);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
