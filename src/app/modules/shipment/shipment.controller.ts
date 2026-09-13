@@ -50,12 +50,23 @@ const assignCourier = catchAsync(async (req: Request, res: Response) => {
 });
 
 const updateShipmentStatus = catchAsync(async (req: Request, res: Response) => {
-  const result = await ShipmentService.updateShipmentStatus(req.params.id, req.body.status, req.user.userId, req.user.role);
+  const result = await ShipmentService.updateShipmentStatus(req.params.id, req.body.status, req.user.userId, req.user.role, req.body.hubId, req.body.note);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: "Shipment status updated successfully",
+    data: result,
+  });
+});
+
+const cancelShipment = catchAsync(async (req: Request, res: Response) => {
+  const result = await ShipmentService.cancelShipment(req.params.id, req.user.userId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Shipment cancelled successfully",
     data: result,
   });
 });
@@ -66,4 +77,5 @@ export const ShipmentController = {
   getSingleShipment,
   assignCourier,
   updateShipmentStatus,
+  cancelShipment,
 };

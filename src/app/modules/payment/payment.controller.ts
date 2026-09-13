@@ -35,8 +35,20 @@ const getPayments = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getSinglePayment = catchAsync(async (req: Request, res: Response) => {
+  const result = await PaymentService.getSinglePayment(req.params.id, req.user);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Payment details retrieved successfully",
+    data: result,
+  });
+});
+
 export const PaymentController = {
   initiatePayment,
   bkashCallback,
   getPayments,
+  getSinglePayment,
 };

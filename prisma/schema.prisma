@@ -28,8 +28,12 @@ enum ShipmentStatus {
   PENDING
   ASSIGNED
   PICKED_UP
+  AT_ORIGIN_HUB
   IN_TRANSIT
+  AT_DESTINATION_HUB
+  OUT_FOR_DELIVERY
   DELIVERED
+  DELIVERY_FAILED
   RETURNED
   CANCELLED
 }
@@ -67,11 +71,13 @@ model User {
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 
-  customer       Customer?
-  courier        Courier?
-  sentShipments  Shipment[] @relation("SenderShipments")
-  deliveries     Shipment[] @relation("CourierDeliveries")
-  auditLogs      AuditLog[]
+  customer             Customer?
+  courier              Courier?
+  sentShipments        Shipment[]         @relation("SenderShipments")
+  deliveries           Shipment[]         @relation("CourierDeliveries")
+  auditLogs            AuditLog[]
+  shipmentTrackings    ShipmentTracking[]
+  transferredShipments ShipmentTransfer[]
 
   @@index([email])
   @@index([role])
@@ -124,36 +130,41 @@ model Hub {
   updatedAt DateTime  @updatedAt
 
   couriers             Courier[]
-  originShipments      Shipment[] @relation("OriginHub")
-  destinationShipments Shipment[] @relation("DestinationHub")
+  originShipments      Shipment[]         @relation("OriginHub")
+  destinationShipments Shipment[]         @relation("DestinationHub")
+  trackingRecords      ShipmentTracking[]
+  transfersFrom        ShipmentTransfer[] @relation("FromHub")
+  transfersTo          ShipmentTransfer[] @relation("ToHub")
 
   @@map("hubs")
 }
 
 model Shipment {
-  id               String         @id @default(uuid())
-  trackingId       String         @unique
-  senderId         String
-  courierId        String?
-  originHubId      String?
-  destinationHubId String?
-  receiverName     String
-  receiverPhone    String
-  receiverAddress  String
-  weight           Decimal        @db.Decimal(10, 2)
-  price            Decimal        @db.Decimal(10, 2)
-  status           ShipmentStatus @default(PENDING)
+  id                String         @id @default(uuid())
+  trackingId        String         @unique
+  senderId          String
+  courierId         String?
+  originHubId       String?
+  destinationHubId  String?
+  receiverName      String
+  receiverPhone     String
+  receiverAddress   String
+  weight            Decimal        @db.Decimal(10, 2)
+  price             Decimal        @db.Decimal(10, 2)
+  status            ShipmentStatus @default(PENDING)
   estimatedDelivery DateTime?
-  isDeleted        Boolean        @default(false)
-  deletedAt        DateTime?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  isDeleted         Boolean        @default(false)
+  deletedAt         DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
-  sender         User     @relation("SenderShipments", fields: [senderId], references: [id])
-  courier        User?    @relation("CourierDeliveries", fields: [courierId], references: [id])
-  originHub      Hub?     @relation("OriginHub", fields: [originHubId], references: [id])
-  destinationHub Hub?     @relation("DestinationHub", fields: [destinationHubId], references: [id])
+  sender         User               @relation("SenderShipments", fields: [senderId], references: [id])
+  courier        User?              @relation("CourierDeliveries", fields: [courierId], references: [id])
+  originHub      Hub?               @relation("OriginHub", fields: [originHubId], references: [id])
+  destinationHub Hub?               @relation("DestinationHub", fields: [destinationHubId], references: [id])
   payment        Payment?
+  trackings      ShipmentTracking[]
+  transfers      ShipmentTransfer[]
 
   @@index([trackingId])
   @@index([senderId])
@@ -162,21 +173,60 @@ model Shipment {
   @@map("shipments")
 }
 
+model ShipmentTracking {
+  id         String         @id @default(uuid())
+  shipmentId String
+  status     ShipmentStatus
+  hubId      String?
+  location   String?
+  note       String?
+  updatedById String
+  createdAt  DateTime       @default(now())
+
+  shipment  Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  hub       Hub?     @relation(fields: [hubId], references: [id], onDelete: SetNull)
+  updatedBy User     @relation(fields: [updatedById], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@map("shipment_trackings")
+}
+
+model ShipmentTransfer {
+  id             String         @id @default(uuid())
+  shipmentId     String
+  fromHubId      String
+  toHubId        String
+  transferredById String
+  status         ShipmentStatus @default(IN_TRANSIT)
+  departureAt    DateTime?
+  arrivalAt      DateTime?
+  notes          String?
+  createdAt      DateTime       @default(now())
+
+  shipment      Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  fromHub       Hub      @relation("FromHub", fields: [fromHubId], references: [id])
+  toHub         Hub      @relation("ToHub", fields: [toHubId], references: [id])
+  transferredBy User     @relation(fields: [transferredById], references: [id])
+
+  @@index([shipmentId])
+  @@map("shipment_transfers")
+}
+
 model Payment {
-  id               String         @id @default(uuid())
-  shipmentId       String         @unique
-  amount           Decimal        @db.Decimal(10, 2)
-  currency         String         @default("BDT")
-  paymentGateway   PaymentGateway @default(BKASH)
-  transactionId    String?        @unique
-  status           PaymentStatus  @default(UNPAID)
-  payerReference   String?
-  gatewayResponse  Json?
-  paidAt           DateTime?
-  isDeleted        Boolean        @default(false)
-  deletedAt        DateTime?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id              String         @id @default(uuid())
+  shipmentId      String         @unique
+  amount          Decimal        @db.Decimal(10, 2)
+  currency        String         @default("BDT")
+  paymentGateway  PaymentGateway @default(BKASH)
+  transactionId   String?        @unique
+  status          PaymentStatus  @default(UNPAID)
+  payerReference  String?
+  gatewayResponse Json?
+  paidAt          DateTime?
+  isDeleted       Boolean        @default(false)
+  deletedAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
 

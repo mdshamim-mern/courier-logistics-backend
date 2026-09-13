@@ -193,8 +193,29 @@ const getPayments = async (query: any, user: any) => {
   };
 };
 
+const getSinglePayment = async (id: string, user: any) => {
+  const payment = await prisma.payment.findUnique({
+    where: { id, isDeleted: false },
+    include: {
+      shipment: { select: { trackingId: true, senderId: true } },
+    },
+  });
+
+  if (!payment) {
+    throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
+  }
+
+  if (user.role === "CUSTOMER" && payment.shipment.senderId !== user.userId) {
+    throw new AppError(httpStatus.FORBIDDEN, "You do not have permission to view this payment");
+  }
+
+  const { gatewayResponse, ...safeData } = payment as any;
+  return safeData;
+};
+
 export const PaymentService = {
   initiatePayment,
   executePayment,
   getPayments,
+  getSinglePayment,
 };

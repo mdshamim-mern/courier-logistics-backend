@@ -63,11 +63,14 @@ const getAllUsers = async (query: any) => {
     });
   }
 
+  const allowedSortFields = ["createdAt", "name", "email", "status", "role"];
+  const validSortBy = allowedSortFields.includes(sortBy as string) ? sortBy : "createdAt";
+
   const result = await prisma.user.findMany({
     where: { AND: andConditions },
     skip,
     take,
-    orderBy: { [sortBy]: sortOrder },
+    orderBy: { [validSortBy]: sortOrder },
     select: {
       id: true,
       name: true,
@@ -129,8 +132,51 @@ const updateUserStatus = async (userId: string, status: UserStatus, adminId: str
   return result;
 };
 
+const updateUserRole = async (userId: string, role: Role, adminId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId, isDeleted: false },
+  });
+
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  if (user.id === adminId) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Cannot update your own role");
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const updatedUser = await tx.user.update({
+      where: { id: userId },
+      data: { role },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        status: true,
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        userId: adminId,
+        action: "UPDATE_USER_ROLE",
+        entityId: userId,
+        entityType: "USER",
+        details: { previousRole: user.role, newRole: role },
+      },
+    });
+
+    return updatedUser;
+  });
+
+  return result;
+};
+
 export const AdminService = {
   getDashboardStats,
   getAllUsers,
   updateUserStatus,
+  updateUserRole,
 };

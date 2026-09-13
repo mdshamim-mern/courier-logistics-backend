@@ -42,8 +42,24 @@ const updateUserStatus = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateUserRole = catchAsync(async (req: Request, res: Response) => {
+  const result = await AdminService.updateUserRole(
+    req.params.id,
+    req.body.role,
+    req.user.userId
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "User role updated successfully",
+    data: result,
+  });
+});
+
 export const AdminController = {
   getDashboardStats,
   getAllUsers,
   updateUserStatus,
+  updateUserRole,
 };
