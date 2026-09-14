@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   const adminEmail = "admin@courier.com";
   const courierEmail = "courier@courier.com";
+  const customerEmail = "customer@courier.com";
 
   const existingAdmin = await prisma.user.findUnique({
     where: { email: adminEmail },
@@ -49,6 +50,33 @@ async function main() {
         userId: courierUser.id,
         contactNumber: "01700000000",
         isAvailable: true,
+      },
+    });
+  }
+
+  const existingCustomer = await prisma.user.findUnique({
+    where: { email: customerEmail },
+  });
+
+  if (!existingCustomer) {
+    const hashedPassword = await bcrypt.hash("Customer@1234", 10);
+    const customerUser = await prisma.user.create({
+      data: {
+        name: "Demo Customer",
+        email: customerEmail,
+        password: hashedPassword,
+        role: Role.CUSTOMER,
+        status: UserStatus.ACTIVE,
+        authProvider: AuthProvider.CREDENTIAL,
+        emailVerified: true,
+      },
+    });
+
+    await prisma.customer.create({
+      data: {
+        userId: customerUser.id,
+        contactNumber: "01800000000",
+        address: "House 12, Road 5, Savar, Dhaka",
       },
     });
   }

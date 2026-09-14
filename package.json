@@ -43,8 +43,12 @@
     "@types/pdfkit": "^0.13.4",
     "@types/pg": "^8.11.2",
     "prisma": "^5.10.2",
+    "ts-node": "^10.9.2",
     "tsup": "^8.0.2",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   }
 }
