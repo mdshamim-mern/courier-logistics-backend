@@ -1,6 +1,6 @@
 # 📦 Courier & Logistics Platform — Backend API
 
-A production-style, role-based backend REST API for a courier and logistics management system. Built with Node.js, TypeScript, Express, and PostgreSQL (Prisma ORM), it covers end-to-end shipment tracking, hub-to-hub transfer, courier assignment, real payment processing, and full audit logging.
+A production-style, role-based backend REST API for a courier and logistics management system. Built with Node.js, TypeScript, Express, and PostgreSQL (Prisma ORM), it covers end-to-end shipment tracking, courier assignment, real payment processing, and audit logging.
 
 ---
 
@@ -14,7 +14,7 @@ A production-style, role-based backend REST API for a courier and logistics mana
 |---|---|---|
 | Admin | `admin@courier.com` | `Admin@12345` |
 | Courier | `courier@courier.com` | `Courier@1234` |
-| Customer | `customer@courier.com` | `Customer@1234` *(register this via `/auth/register` before demoing, or add it to `prisma/seed.ts`)* |
+| Customer | `customer@courier.com` | `Customer@1234` |
 
 > ⚠️ These are dedicated demo accounts created only for evaluation — no personal credentials are used.
 
@@ -42,12 +42,12 @@ A production-style, role-based backend REST API for a courier and logistics mana
 - **3-role RBAC** — Customer, Courier, Admin, each with strictly enforced permissions
 - **Full authentication suite** — email/password, email OTP verification, Google Social Login, access/refresh tokens, blacklist-based logout, forgot/reset password
 - **Shipment lifecycle engine** — enforced state-machine transitions with a full tracking timeline per shipment
-- **Hub-to-hub transfer tracking** — dedicated transfer records between origin and destination hubs
+- **Origin-to-destination hub routing** — every shipment is tied to an origin and destination hub, with each hub arrival recorded in the tracking timeline
 - **Smart courier assignment** — checks availability, current hub match, and active-load limit before assigning
 - **Real payment processing** — bKash Tokenized Checkout integration (initiate → callback → verify → status update), not a simulated flow
 - **Soft deletes everywhere** — no hard deletes on core resources
-- **Full audit trail** — every sensitive action (status change, role change, login/logout, payment) is logged
-- **Search, filter, sort & pagination** — on every list endpoint
+- **Audit trail** — key sensitive actions (status change, role change, logout, payment) are logged
+- **Search, filter, sort & pagination** — on shipment, hub, user, and courier list endpoints (payments list supports pagination)
 - **Admin analytics dashboard** — live counts and revenue stats
 
 ---
@@ -145,7 +145,7 @@ All routes are versioned under `/api/v1`. Protected routes require `Authorizatio
 | POST | `/payments/initiate` | Customer |
 | GET | `/payments/bkash/callback` | Public (bKash redirect/webhook) |
 | GET | `/payments/:id` | Authenticated |
-| GET | `/payments` | Authenticated |
+| GET | `/payments` | Authenticated *(pagination)* |
 
 ### Admin & Audit
 | Method | Endpoint | Access |
@@ -160,14 +160,12 @@ All routes are versioned under `/api/v1`. Protected routes require `Authorizatio
 
 ## 📄 API Documentation (Postman)
 
-A complete Postman collection and environment are included in the repo:
+A complete Postman collection and environment are provided with this submission:
 
 - Collection: `courier-backend_postman_collection.json`
 - Environment: `Courier-Logistics-Environment.postman_environment.json`
 
-**Import both files into Postman**, select the **Courier Local** (or your own) environment, log in with any role first, then paste the returned `accessToken` into the matching `admin_access_token` / `customer_access_token` / `courier_access_token` variable.
-
-Published docs: `[add your documenter.getpostman.com link here after publishing]`
+**Import both files into Postman**, select the **Courier Live** environment, log in with any role first, then paste the returned `accessToken` into the matching `admin_access_token` / `customer_access_token` / `courier_access_token` variable.
 
 ---
 
@@ -248,9 +246,9 @@ npx prisma generate
 npx prisma migrate deploy
 ```
 
-### 5. Seed demo Admin & Courier accounts
+### 5. Seed demo Admin, Courier & Customer accounts
 ```bash
-npx tsx prisma/seed.ts
+npx prisma db seed
 ```
 
 ### 6. Start the development server
