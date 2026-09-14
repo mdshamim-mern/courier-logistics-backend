@@ -37,11 +37,14 @@ const getAllHubs = async (query: any) => {
     });
   }
 
+  const allowedSortFields = ["createdAt", "name", "location"];
+  const validSortBy = allowedSortFields.includes(sortBy as string) ? sortBy : "createdAt";
+
   const result = await prisma.hub.findMany({
     where: { AND: andConditions },
     skip,
     take,
-    orderBy: { [sortBy]: sortOrder },
+    orderBy: { [validSortBy]: sortOrder },
   });
 
   const total = await prisma.hub.count({ where: { AND: andConditions } });

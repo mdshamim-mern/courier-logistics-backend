@@ -17,11 +17,14 @@ const getAuditLogs = async (query: any) => {
     andConditions.push({ entityType });
   }
 
+  const allowedSortFields = ["createdAt", "action", "entityType"];
+  const validSortBy = allowedSortFields.includes(sortBy as string) ? sortBy : "createdAt";
+
   const result = await prisma.auditLog.findMany({
     where: andConditions.length > 0 ? { AND: andConditions } : {},
     skip,
     take,
-    orderBy: { [sortBy]: sortOrder },
+    orderBy: { [validSortBy]: sortOrder },
     include: {
       user: { select: { id: true, name: true, email: true, role: true } },
     },

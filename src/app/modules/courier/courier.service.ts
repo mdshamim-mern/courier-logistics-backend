@@ -73,11 +73,14 @@ const getAllCouriers = async (filters: ICourierFilterRequest) => {
 
   const whereConditions = andConditions.length > 0 ? { AND: andConditions } : {};
 
+  const allowedSortFields = ["createdAt", "isAvailable"];
+  const validSortBy = allowedSortFields.includes(sortBy as string) ? sortBy : "createdAt";
+
   const result = await prisma.courier.findMany({
     where: whereConditions,
     skip,
     take,
-    orderBy: { [sortBy]: sortOrder },
+    orderBy: { [validSortBy]: sortOrder },
     include: {
       user: {
         select: { id: true, name: true, email: true, status: true, role: true },
