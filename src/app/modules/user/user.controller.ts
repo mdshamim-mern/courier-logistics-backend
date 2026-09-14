@@ -33,7 +33,18 @@ const updateProfileImage = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateMyProfile = catchAsync(async (req: Request, res: Response) => {
+  const result = await UserService.updateMyProfile(req.user.userId, req.body);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Profile updated successfully",
+    data: result,
+  });
+});
+
 export const UserController = {
   getMe,
   updateProfileImage,
+  updateMyProfile,
 };

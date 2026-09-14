@@ -66,7 +66,23 @@ const updateProfileImage = async (userId: string, fileBuffer: Buffer) => {
   return updatedUser;
 };
 
+const updateMyProfile = async (userId: string, payload: any) => {
+  const result = await prisma.user.update({
+    where: { id: userId, isDeleted: false },
+    data: payload,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      imageUrl: true,
+      role: true,
+    }
+  });
+  return result;
+};
+
 export const UserService = {
   getMe,
   updateProfileImage,
+  updateMyProfile,
 };

@@ -170,6 +170,11 @@ const loginUser = async (payload: ILoginPayload) => {
 };
 
 const refreshToken = async (token: string) => {
+  const isBlacklisted = await redisClient.get(`blacklist:refresh:${token}`);
+  if (isBlacklisted) {
+    throw new AppError(httpStatus.UNAUTHORIZED, "Refresh token is blacklisted");
+  }
+
   let decoded: JwtPayload;
 
   try {
@@ -321,12 +326,17 @@ const resetPassword = async (payload: IResetPasswordPayload) => {
   return null;
 };
 
-const logoutUser = async (token: string, userId: string) => {
-  if (!token) {
+const logoutUser = async (accessToken: string, refreshToken: string, userId: string) => {
+  if (!accessToken) {
     throw new AppError(httpStatus.BAD_REQUEST, "Token is required for logout");
   }
 
-  await redisClient.setEx(`blacklist:${token}`, 86400, "revoked");
+  await redisClient.setEx(`blacklist:${accessToken}`, 86400, "revoked");
+
+  if (refreshToken) {
+    const refreshTokenExpiresIn = 7 * 24 * 60 * 60;
+    await redisClient.setEx(`blacklist:refresh:${refreshToken}`, refreshTokenExpiresIn, "true");
+  }
 
   await prisma.auditLog.create({
     data: {

@@ -138,10 +138,11 @@ const resetPassword = catchAsync(async (req: Request, res: Response) => {
 });
 
 const logout = catchAsync(async (req: Request, res: Response) => {
-  const token = req.cookies?.accessToken || req.headers.authorization?.split(" ")[1];
+  const accessToken = req.cookies?.accessToken || req.headers.authorization?.split(" ")[1];
+  const refreshToken = req.cookies?.refreshToken;
   const userId = req.user?.userId;
 
-  await AuthService.logoutUser(token as string, userId);
+  await AuthService.logoutUser(accessToken as string, refreshToken as string, userId);
 
   res.clearCookie("accessToken", {
     secure: process.env.NODE_ENV === "production",
