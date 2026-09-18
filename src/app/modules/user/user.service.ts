@@ -9,8 +9,8 @@ const getMe = async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
-      customerProfile: true,
-      courierProfile: {
+      customer: true,
+      courier: {
         include: {
           hub: true,
         },
