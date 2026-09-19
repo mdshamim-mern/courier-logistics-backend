@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   const adminEmail = "admin@courier.com";
   const courierEmail = "courier@courier.com";
+  
   const customerEmail = "customer@courier.com";
 
   const existingAdmin = await prisma.user.findUnique({
