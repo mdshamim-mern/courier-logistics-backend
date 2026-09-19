@@ -115,6 +115,7 @@ model Courier {
   user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   hub  Hub?  @relation(fields: [currentHubId], references: [id], onDelete: SetNull)
 
+  @@index([isAvailable])
   @@map("couriers")
 }
 
