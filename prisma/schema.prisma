@@ -79,7 +79,6 @@ model User {
   shipmentTrackings    ShipmentTracking[]
   transferredShipments ShipmentTransfer[]
 
-  @@index([email])
   @@index([role])
   @@index([isDeleted])
   @@map("users")
@@ -158,15 +157,14 @@ model Shipment {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
-  sender         User               @relation("SenderShipments", fields: [senderId], references: [id])
-  courier        User?              @relation("CourierDeliveries", fields: [courierId], references: [id])
-  originHub      Hub?               @relation("OriginHub", fields: [originHubId], references: [id])
-  destinationHub Hub?               @relation("DestinationHub", fields: [destinationHubId], references: [id])
+  sender         User               @relation("SenderShipments", fields: [senderId], references: [id], onDelete: Restrict)
+  courier        User?              @relation("CourierDeliveries", fields: [courierId], references: [id], onDelete: SetNull)
+  originHub      Hub?               @relation("OriginHub", fields: [originHubId], references: [id], onDelete: SetNull)
+  destinationHub Hub?               @relation("DestinationHub", fields: [destinationHubId], references: [id], onDelete: SetNull)
   payment        Payment?
   trackings      ShipmentTracking[]
   transfers      ShipmentTransfer[]
 
-  @@index([trackingId])
   @@index([senderId])
   @@index([courierId])
   @@index([status])
@@ -180,12 +178,12 @@ model ShipmentTracking {
   hubId      String?
   location   String?
   note       String?
-  updatedById String
+  updatedById String?
   createdAt  DateTime       @default(now())
 
   shipment  Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
   hub       Hub?     @relation(fields: [hubId], references: [id], onDelete: SetNull)
-  updatedBy User     @relation(fields: [updatedById], references: [id], onDelete: Cascade)
+  updatedBy User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
 
   @@index([shipmentId])
   @@map("shipment_trackings")
@@ -204,9 +202,9 @@ model ShipmentTransfer {
   createdAt      DateTime       @default(now())
 
   shipment      Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
-  fromHub       Hub      @relation("FromHub", fields: [fromHubId], references: [id])
-  toHub         Hub      @relation("ToHub", fields: [toHubId], references: [id])
-  transferredBy User     @relation(fields: [transferredById], references: [id])
+  fromHub       Hub      @relation("FromHub", fields: [fromHubId], references: [id], onDelete: Restrict)
+  toHub         Hub      @relation("ToHub", fields: [toHubId], references: [id], onDelete: Restrict)
+  transferredBy User     @relation(fields: [transferredById], references: [id], onDelete: Restrict)
 
   @@index([shipmentId])
   @@map("shipment_transfers")
@@ -230,7 +228,6 @@ model Payment {
 
   shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
 
-  @@index([transactionId])
   @@map("payments")
 }
 
@@ -243,7 +240,7 @@ model AuditLog {
   details    Json?
   createdAt  DateTime @default(now())
 
-  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([entityId, entityType])
   @@map("audit_logs")
