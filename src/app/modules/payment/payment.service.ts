@@ -7,7 +7,7 @@ import Stripe from "stripe";
 
 const prisma = new PrismaClient();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: "2024-06-20",
+  apiVersion: "2026-09-30.endive",
 });
 
 const getBkashToken = async () => {
@@ -190,7 +190,6 @@ const initiateStripePayment = async (shipmentId: string, userId: string) => {
   }
 
   const session = await stripe.checkout.sessions.create({
-    payment_method_types: ["card"],
     line_items: [
       {
         price_data: {
@@ -256,12 +255,12 @@ const executeStripePayment = async (sessionId: string) => {
           action: "PAYMENT_SUCCESS",
           entityId: shipmentId,
           entityType: "SHIPMENT",
-          details: { transactionId: session.payment_intent, amount: session.amount_total },
+          details: { transactionId: session.payment_intent as string, amount: session.amount_total },
         },
       });
     });
 
-    return { redirectUrl: `${process.env.FRONTEND_URL}/payment/success?trxId=${session.payment_intent}` };
+    return { redirectUrl: `${process.env.FRONTEND_URL}/payment/success?trxId=${session.payment_intent as string}` };
   } else {
     await prisma.payment.updateMany({
       where: { transactionId: sessionId },
@@ -270,7 +269,6 @@ const executeStripePayment = async (sessionId: string) => {
     return { redirectUrl: `${process.env.FRONTEND_URL}/payment/failure` };
   }
 };
-
 
 const getPayments = async (query: any, user: any) => {
   const { page = 1, limit = 10 } = query;
