@@ -23,6 +23,31 @@ const bkashCallback = catchAsync(async (req: Request, res: Response) => {
   res.redirect(result.redirectUrl);
 });
 
+const initiateStripePayment = catchAsync(async (req: Request, res: Response) => {
+  const result = await PaymentService.initiateStripePayment(req.body.shipmentId, req.user.userId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Stripe payment initiated successfully",
+    data: result,
+  });
+});
+
+const stripeCallback = catchAsync(async (req: Request, res: Response) => {
+  const { session_id } = req.query;
+
+  if (!session_id) {
+    res.redirect(`${process.env.FRONTEND_URL}/payment/failure`);
+    return;
+  }
+
+  const result = await PaymentService.executeStripePayment(session_id as string);
+  
+  res.redirect(result.redirectUrl);
+});
+
+
 const getPayments = catchAsync(async (req: Request, res: Response) => {
   const result = await PaymentService.getPayments(req.query, req.user);
 
@@ -49,6 +74,8 @@ const getSinglePayment = catchAsync(async (req: Request, res: Response) => {
 export const PaymentController = {
   initiatePayment,
   bkashCallback,
+  initiateStripePayment,
+  stripeCallback,
   getPayments,
   getSinglePayment,
 };
