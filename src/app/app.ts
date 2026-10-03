@@ -12,7 +12,11 @@ const app: Application = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: [
+      "http://localhost:3000",
+      "https://courier-frontend-sigma.vercel.app",
+      process.env.FRONTEND_URL as string
+    ].filter(Boolean),
     credentials: true,
   })
 );
