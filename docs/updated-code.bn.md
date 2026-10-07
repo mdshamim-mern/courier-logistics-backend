@@ -53,6 +53,7 @@ ALLOW_DEMO_SEED=false
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\.github\workflows\ci.yml
 
 ```yaml
@@ -103,6 +104,7 @@ jobs:
       - run: npm run test:integration
       - run: npm run build
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\package.json
@@ -173,6 +175,7 @@ jobs:
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\prisma\migrations\20261008000000_security_payment_attempts\migration.sql
 
 ```sql
@@ -207,6 +210,7 @@ FROM "payments" WHERE "transactionId" IS NOT NULL;
 
 UPDATE "payments" SET "paymentGateway" = 'STRIPE' WHERE "transactionId" LIKE 'cs_%';
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\prisma\schema.prisma
@@ -487,6 +491,7 @@ model AuditLog {
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\prisma\seed.ts
 
 ```ts
@@ -590,6 +595,7 @@ main()
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\app.ts
 
 ```ts
@@ -655,6 +661,7 @@ app.use(notFound);
 app.use(globalErrorHandler);
 export default app;
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\config\index.ts
@@ -724,6 +731,7 @@ export default {
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\errors\handleCastError.ts
 
 ```ts
@@ -746,6 +754,7 @@ const handleCastError = (err: { path?: string; message?: string }) => {
 
 export default handleCastError;
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\errors\handleDuplicateError.ts
@@ -778,6 +787,7 @@ const handleDuplicateError = (err: Prisma.PrismaClientKnownRequestError) => {
 
 export default handleDuplicateError;
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\errors\handlePrismaError.ts
@@ -827,6 +837,7 @@ export default handlePrismaError;
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\errors\handleZodError.ts
 
 ```ts
@@ -851,6 +862,7 @@ const handleZodError = (err: ZodError) => {
 
 export default handleZodError;
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\middlewares\auth.ts
@@ -899,6 +911,7 @@ export default auth;
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\middlewares\csrf.ts
 
 ```ts
@@ -916,6 +929,7 @@ export const csrfProtection: RequestHandler = (req, res, next) => {
   next();
 };
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\middlewares\globalErrorHandler.ts
@@ -968,6 +982,7 @@ export default globalErrorHandler;
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\middlewares\multer.ts
 
 ```ts
@@ -1008,6 +1023,7 @@ export const upload = multer({
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\middlewares\notFound.ts
 
 ```ts
@@ -1029,6 +1045,7 @@ const notFound = (req: Request, res: Response, next: NextFunction) => {
 
 export default notFound;
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\middlewares\rateLimiter.ts
@@ -1066,6 +1083,7 @@ export default rateLimiter;
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\middlewares\validateRequest.ts
 
 ```ts
@@ -1096,6 +1114,7 @@ const validateRequest = (schema: AnyZodObject) => {
 
 export default validateRequest;
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\admin\admin.controller.ts
@@ -1167,6 +1186,7 @@ export const AdminController = {
   updateUserRole,
 };
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\admin\admin.service.ts
@@ -1392,6 +1412,7 @@ export const AdminService = {
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\auditLog\auditLog.controller.ts
 
 ```ts
@@ -1417,6 +1438,7 @@ export const AuditLogController = {
   getAuditLogs,
 };
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\auditLog\auditLog.service.ts
@@ -1473,6 +1495,7 @@ export const AuditLogService = {
   getAuditLogs,
 };
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\auth\auth.controller.ts
@@ -1533,6 +1556,7 @@ const logout = catchAsync(async (req: Request, res: Response) => {
 
 export const AuthController = { registerCustomer, verifyEmail, loginUser, refreshToken, googleLogin, forgotPassword, resetPassword, logout };
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\auth\auth.route.ts
@@ -1599,6 +1623,7 @@ router.post(
 
 export const AuthRoutes = router;
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\auth\auth.service.ts
@@ -1747,6 +1772,7 @@ export const AuthService = { registerCustomer, verifyEmail, loginUser, refreshTo
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\auth\auth.validation.ts
 
 ```ts
@@ -1820,6 +1846,7 @@ export const AuthValidation = {
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\courier\courier.controller.ts
 
 ```ts
@@ -1891,6 +1918,7 @@ export const CourierController = {
   getCourierHistoryAndEarnings,
 };
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\courier\courier.service.ts
@@ -2109,6 +2137,7 @@ export const CourierService = {
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\courier\courier.validation.ts
 
 ```ts
@@ -2140,6 +2169,7 @@ export const CourierValidation = {
   updateCourierZodSchema,
 };
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\hub\hub.controller.ts
@@ -2215,6 +2245,7 @@ export const HubController = {
   deleteHub,
 };
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\hub\hub.service.ts
@@ -2349,6 +2380,7 @@ export const HubService = {
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\payment\payment.controller.ts
 
 ```ts
@@ -2442,6 +2474,7 @@ export const PaymentController = {
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\payment\payment.gateway.ts
 
 ```ts
@@ -2474,6 +2507,7 @@ export function assertBkashPayment(result: Record<string, unknown>, expected: Ex
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\payment\payment.route.ts
 
 ```ts
@@ -2496,6 +2530,7 @@ router.get("/:id", auth("ADMIN", "CUSTOMER"), PaymentController.getSinglePayment
 
 export const PaymentRoutes = router;
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\payment\payment.service.ts
@@ -2759,6 +2794,7 @@ export const PaymentService = { initiatePayment, executePayment, initiateStripeP
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\payment\payment.validation.ts
 
 ```ts
@@ -2776,6 +2812,7 @@ export const PaymentValidation = {
   InitiatePaymentSchema,
 };
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\payment\payment.webhook.ts
@@ -2802,6 +2839,7 @@ export async function stripeWebhook(req: Request, res: Response, next: NextFunct
   }
 }
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\shipment\shipment.controller.ts
@@ -2903,6 +2941,7 @@ export const ShipmentController = {
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\shipment\shipment.route.ts
 
 ```ts
@@ -2963,6 +3002,7 @@ export const ShipmentRoutes = router;
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\shipment\shipment.rules.ts
 
 ```ts
@@ -2991,6 +3031,7 @@ export function nextShipmentStatuses(status: ShipmentStatus, role: string) {
   return ALLOWED_TRANSITIONS[status].filter(next => next !== ShipmentStatus.ASSIGNED && (role === Role.ADMIN || next !== ShipmentStatus.CANCELLED));
 }
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\shipment\shipment.service.ts
@@ -3177,6 +3218,7 @@ export const ShipmentService = { createShipment, getAllShipments, getShipmentSum
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\shipment\shipment.validation.ts
 
 ```ts
@@ -3235,6 +3277,7 @@ export const ShipmentValidation = {
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\user\user.controller.ts
 
 ```ts
@@ -3289,6 +3332,7 @@ export const UserController = {
   updateMyProfile,
 };
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\user\user.service.ts
@@ -3404,6 +3448,7 @@ export const UserService = {
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\modules\user\user.validation.ts
 
 ```ts
@@ -3421,6 +3466,7 @@ export const UserValidation = {
   UpdateProfileSchema,
 };
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\routes\index.ts
@@ -3479,6 +3525,7 @@ export default router;
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\utils\catchAsync.ts
 
 ```ts
@@ -3496,6 +3543,7 @@ const catchAsync = (fn: RequestHandler) => {
 
 export default catchAsync;
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\utils\cookies.ts
@@ -3528,6 +3576,7 @@ export function clearSessionCookies(res: Response) {
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\utils\logger.ts
 
 ```ts
@@ -3540,6 +3589,7 @@ export const logger = {
   },
 };
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\utils\prisma.ts
@@ -3555,6 +3605,7 @@ if (process.env.NODE_ENV !== "production") {
   globalDatabase.prisma = prisma;
 }
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\utils\query.ts
@@ -3577,6 +3628,7 @@ export const listQuerySchema = z.object({
 
 export const idParamsSchema = z.object({ params: z.object({ id: z.string().uuid() }) });
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\utils\redis.ts
@@ -3606,6 +3658,7 @@ export const connectRedis = async () => {
   await connection;
 };
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\utils\sendResponse.ts
@@ -3639,6 +3692,7 @@ const sendResponse = <T>(res: Response, data: TResponse<T>) => {
 
 export default sendResponse;
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\utils\session.ts
@@ -3693,6 +3747,7 @@ export function safeUser(user: User) {
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\server.ts
 
 ```ts
@@ -3745,6 +3800,7 @@ export default app;
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\tests\environment.ts
 
 ```ts
@@ -3758,6 +3814,7 @@ process.env.COOKIE_SAME_SITE = "lax";
 process.env.STRIPE_SECRET_KEY = "sk_test_local_fixture";
 process.env.STRIPE_WEBHOOK_SECRET = "whsec_local_fixture";
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\tests\integration\environment.ts
@@ -3775,6 +3832,7 @@ process.env.JWT_REFRESH_SECRET = "integration-refresh-secret-at-least-32-charact
 process.env.FRONTEND_URL = "http://localhost:3000";
 process.env.COOKIE_SAME_SITE = "lax";
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\tests\integration\transactions.test.ts
@@ -3906,6 +3964,7 @@ test("shipment summary counts every matching shipment without a page limit", asy
   assert.deepEqual(summary, { totalShipments: 105, activeShipments: 104, deliveredShipments: 1 });
 });
 ```
+
 
 
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\tests\security.test.ts
@@ -4064,6 +4123,7 @@ test("logout revokes its session and the old access token is rejected", async ()
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\tsconfig.json
 
 ```json
@@ -4085,6 +4145,7 @@ test("logout revokes its session and the old access token is rejected", async ()
 ```
 
 
+
 ## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\tsup.config.ts
 
 ```ts
@@ -4102,4 +4163,5 @@ export default defineConfig({
   sourcemap: true,
 });
 ```
+
 নথির সমাপ্তি।
