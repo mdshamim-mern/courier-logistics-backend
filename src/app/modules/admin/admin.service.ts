@@ -1,8 +1,24 @@
-import { PrismaClient, Role, UserStatus } from "@prisma/client";
+import { type Prisma, Role, UserStatus } from "@prisma/client";
+import { z } from "zod";
+import { prisma } from "../../utils/prisma";
+import { listQuerySchema } from "../../utils/query";
+import { ACTIVE_SHIPMENT_STATUSES } from "../shipment/shipment.rules";
 import httpStatus from "http-status";
 import { AppError } from "../../errors/AppError";
 
-const prisma = new PrismaClient();
+async function lockAdminMutation(tx: Prisma.TransactionClient, userId: string, adminId: string) {
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(702045)`;
+  const actor = await tx.user.findUnique({ where: { id: adminId } });
+  if (!actor || actor.role !== Role.ADMIN || actor.status !== UserStatus.ACTIVE || actor.isDeleted || !actor.emailVerified) throw new AppError(403, "Administrator access is no longer valid");
+  const user = await tx.user.findUnique({ where: { id: userId, isDeleted: false } });
+  if (!user) throw new AppError(404, "User not found");
+  return user;
+}
+
+async function assertAnotherAdmin(tx: Prisma.TransactionClient) {
+  const count = await tx.user.count({ where: { role: Role.ADMIN, status: UserStatus.ACTIVE, isDeleted: false, emailVerified: true } });
+  if (count <= 1) throw new AppError(409, "At least one active administrator must remain");
+}
 
 const getDashboardStats = async () => {
   const totalCustomers = await prisma.user.count({
@@ -39,19 +55,19 @@ const getDashboardStats = async () => {
   };
 };
 
-const getAllUsers = async (query: any) => {
-  const { role, status, searchTerm, page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc" } = query;
+const getAllUsers = async (query: unknown) => {
+  const { role, status, searchTerm, page, limit, sortBy, sortOrder } = listQuerySchema.parse(query);
   const skip = (Number(page) - 1) * Number(limit);
   const take = Number(limit);
 
-  const andConditions: any[] = [{ isDeleted: false }];
+  const andConditions: Prisma.UserWhereInput[] = [{ isDeleted: false }];
 
   if (role) {
     andConditions.push({ role });
   }
 
   if (status) {
-    andConditions.push({ status });
+    andConditions.push({ status: z.nativeEnum(UserStatus).parse(status) });
   }
 
   if (searchTerm) {
@@ -95,6 +111,7 @@ const getAllUsers = async (query: any) => {
 };
 
 const updateUserStatus = async (userId: string, status: UserStatus, adminId: string) => {
+  if (userId === adminId && status !== "ACTIVE") throw new AppError(400, "Cannot block or delete your own account");
   const user = await prisma.user.findUnique({
     where: { id: userId, isDeleted: false },
   });
@@ -104,9 +121,11 @@ const updateUserStatus = async (userId: string, status: UserStatus, adminId: str
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    const currentUser = await lockAdminMutation(tx, userId, adminId);
+    if (currentUser.role === Role.ADMIN && status !== UserStatus.ACTIVE) await assertAnotherAdmin(tx);
     const updatedUser = await tx.user.update({
       where: { id: userId },
-      data: { status },
+      data: { status, tokenVersion: { increment: 1 }, isDeleted: status === "DELETED", deletedAt: status === "DELETED" ? new Date() : null },
       select: {
         id: true,
         name: true,
@@ -122,7 +141,7 @@ const updateUserStatus = async (userId: string, status: UserStatus, adminId: str
         action: "UPDATE_USER_STATUS",
         entityId: userId,
         entityType: "USER",
-        details: { previousStatus: user.status, newStatus: status },
+        details: { previousStatus: currentUser.status, newStatus: status },
       },
     });
 
@@ -146,9 +165,25 @@ const updateUserRole = async (userId: string, role: Role, adminId: string) => {
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    const currentUser = await lockAdminMutation(tx, userId, adminId);
+    if (currentUser.role === Role.ADMIN && role !== Role.ADMIN) await assertAnotherAdmin(tx);
+    await tx.$queryRaw`SELECT "id" FROM "couriers" WHERE "userId" = ${userId} FOR UPDATE`;
+    if (currentUser.role === Role.COURIER && role !== Role.COURIER) {
+      const active = await tx.shipment.count({ where: { courierId: userId, isDeleted: false, status: { in: ACTIVE_SHIPMENT_STATUSES } } });
+      if (active) throw new AppError(409, "Complete or reassign the courier deliveries before changing role");
+    }
+    if (role === Role.COURIER) {
+      const customer = await tx.customer.findUnique({ where: { userId } });
+      const contactNumber = currentUser.contactNumber ?? customer?.contactNumber;
+      if (!contactNumber) throw new AppError(400, "A contact number is required before creating a courier profile");
+      await tx.courier.upsert({ where: { userId }, create: { userId, contactNumber }, update: { isDeleted: false, deletedAt: null } });
+    }
+    if (role === Role.CUSTOMER) {
+      await tx.customer.upsert({ where: { userId }, create: { userId, contactNumber: currentUser.contactNumber }, update: { isDeleted: false, deletedAt: null } });
+    }
     const updatedUser = await tx.user.update({
       where: { id: userId },
-      data: { role },
+      data: { role, tokenVersion: { increment: 1 } },
       select: {
         id: true,
         name: true,
@@ -164,7 +199,7 @@ const updateUserRole = async (userId: string, role: Role, adminId: string) => {
         action: "UPDATE_USER_ROLE",
         entityId: userId,
         entityType: "USER",
-        details: { previousRole: user.role, newRole: role },
+        details: { previousRole: currentUser.role, newRole: role },
       },
     });
 

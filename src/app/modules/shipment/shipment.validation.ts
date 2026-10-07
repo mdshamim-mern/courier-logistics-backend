@@ -2,13 +2,13 @@ import { z } from "zod";
 
 const CreateShipmentSchema = z.object({
   body: z.object({
-    receiverName: z.string().min(1),
+    receiverName: z.string().trim().min(1).max(255),
     receiverPhone: z.string().regex(/^(?:\+88|88)?(01[3-9]\d{8})$/),
-    receiverAddress: z.string().min(1),
-    weight: z.number().positive().max(100),
+    receiverAddress: z.string().trim().min(5).max(500),
+    weight: z.number().min(0.01).max(100).multipleOf(0.01),
     originHubId: z.string().uuid().optional(),
     destinationHubId: z.string().uuid().optional(),
-  }).refine((data) => {
+  }).strict().refine((data) => {
     if (data.originHubId && data.destinationHubId) {
       return data.originHubId !== data.destinationHubId;
     }
@@ -35,14 +35,14 @@ const UpdateShipmentStatusSchema = z.object({
       "CANCELLED",
     ]),
     hubId: z.string().uuid().optional(),
-    note: z.string().optional(),
-  }),
+    note: z.string().trim().max(500).optional(),
+  }).strict(),
 });
 
 const AssignCourierSchema = z.object({
   body: z.object({
     courierId: z.string().uuid(),
-  }),
+  }).strict(),
 });
 
 export const ShipmentValidation = {

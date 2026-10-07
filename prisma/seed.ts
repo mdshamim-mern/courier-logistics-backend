@@ -4,6 +4,9 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
+  if (process.env.NODE_ENV === "production" || process.env.ALLOW_DEMO_SEED !== "true") {
+    throw new Error("Demo seeding requires ALLOW_DEMO_SEED=true outside production");
+  }
   const adminEmail = "admin@courier.com";
   const courierEmail = "courier@courier.com";
   

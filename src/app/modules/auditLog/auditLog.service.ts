@@ -1,13 +1,13 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../utils/prisma";
+import type { Prisma } from "@prisma/client";
+import { listQuerySchema } from "../../utils/query";
 
-const prisma = new PrismaClient();
-
-const getAuditLogs = async (query: any) => {
-  const { page = 1, limit = 10, action, entityType, sortBy = "createdAt", sortOrder = "desc" } = query;
+const getAuditLogs = async (query: unknown) => {
+  const { page, limit, action, entityType, sortBy, sortOrder } = listQuerySchema.parse(query);
   const skip = (Number(page) - 1) * Number(limit);
   const take = Number(limit);
 
-  const andConditions: any[] = [];
+  const andConditions: Prisma.AuditLogWhereInput[] = [];
 
   if (action) {
     andConditions.push({ action });

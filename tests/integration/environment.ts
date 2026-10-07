@@ -1,0 +1,11 @@
+const databaseUrl = process.env.INTEGRATION_DATABASE_URL;
+if (!databaseUrl || !new URL(databaseUrl).pathname.endsWith("_test")) throw new Error("INTEGRATION_DATABASE_URL must point to a dedicated database ending in _test");
+process.env.DATABASE_URL = databaseUrl;
+const redisUrl = process.env.INTEGRATION_REDIS_URL;
+if (!redisUrl) throw new Error("INTEGRATION_REDIS_URL must point to a dedicated test Redis instance or database");
+process.env.REDIS_URL = redisUrl;
+process.env.NODE_ENV = "test";
+process.env.JWT_ACCESS_SECRET = "integration-access-secret-at-least-32-characters";
+process.env.JWT_REFRESH_SECRET = "integration-refresh-secret-at-least-32-characters";
+process.env.FRONTEND_URL = "http://localhost:3000";
+process.env.COOKIE_SAME_SITE = "lax";

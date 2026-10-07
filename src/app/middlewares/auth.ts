@@ -1,17 +1,15 @@
-import { PrismaClient } from "@prisma/client";
-import { NextFunction, Request, Response } from "express";
-import httpStatus from "http-status";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import type { NextFunction, Request, Response } from "express";
+import type { Role } from "@prisma/client";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 import config from "../config";
 import { AppError } from "../errors/AppError";
-import { redisClient } from "../utils/redis";
-
-const prisma = new PrismaClient();
+import { prisma } from "../utils/prisma";
+import { hasSession } from "../utils/session";
 
 declare global {
   namespace Express {
     interface Request {
-      user: JwtPayload;
+      user: JwtPayload & { userId: string; role: Role; sessionId: string };
     }
   }
 }
@@ -19,46 +17,19 @@ declare global {
 const auth = (...requiredRoles: string[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const token =
-        req.cookies?.accessToken || req.headers.authorization?.split(" ")[1];
-
-      if (!token) {
-        throw new AppError(httpStatus.UNAUTHORIZED, "You are not authorized!");
+      const bearer = req.headers.authorization?.match(/^Bearer (\S+)$/i)?.[1];
+      const token = req.cookies?.accessToken || bearer;
+      if (!token) throw new AppError(401, "Authentication required");
+      const decoded = jwt.verify(token, config.jwt_access_secret, { algorithms: ["HS256"] }) as JwtPayload;
+      if (typeof decoded.userId !== "string" || typeof decoded.sessionId !== "string") {
+        throw new AppError(401, "Invalid session");
       }
-
-      const isBlacklisted = await redisClient.get(`blacklist:${token}`);
-      if (isBlacklisted) {
-        throw new AppError(httpStatus.UNAUTHORIZED, "You are logged out. Please log in again.");
-      }
-
-      const decoded = jwt.verify(
-        token,
-        config.jwt_access_secret as string
-      ) as JwtPayload;
-
-      const { email, role, iat } = decoded;
-
-      const user = await prisma.user.findUnique({
-        where: { email },
-      });
-
-      if (!user) {
-        throw new AppError(httpStatus.NOT_FOUND, "This user is not found!");
-      }
-
-      if (user.isDeleted || user.status === "DELETED") {
-        throw new AppError(httpStatus.FORBIDDEN, "This user is deleted!");
-      }
-
-      if (user.status === "BLOCKED") {
-        throw new AppError(httpStatus.FORBIDDEN, "This user is blocked!");
-      }
-
-      if (requiredRoles && !requiredRoles.includes(role)) {
-        throw new AppError(httpStatus.FORBIDDEN, "You are not authorized!");
-      }
-
-      req.user = decoded;
+      const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+      if (!user || user.isDeleted || user.status !== "ACTIVE") throw new AppError(403, "User account is not accessible");
+      if (decoded.tokenVersion !== user.tokenVersion || !(await hasSession(decoded.sessionId))) throw new AppError(401, "Session expired");
+      if (!user.emailVerified) throw new AppError(403, "Email verification required");
+      if (requiredRoles.length > 0 && !requiredRoles.includes(user.role)) throw new AppError(403, "You do not have permission for this action");
+      req.user = { ...decoded, sessionId: decoded.sessionId, userId: user.id, email: user.email, name: user.name, role: user.role };
       next();
     } catch (error) {
       next(error);

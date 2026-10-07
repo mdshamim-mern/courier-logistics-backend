@@ -7,6 +7,7 @@ const RegisterCustomerZodSchema = z.object({
     password: z
       .string()
       .min(8)
+      .max(72)
       .regex(/[a-z]/)
       .regex(/[A-Z]/)
       .regex(/[0-9]/)
@@ -18,20 +19,20 @@ const RegisterCustomerZodSchema = z.object({
 const VerifyEmailZodSchema = z.object({
   body: z.object({
     email: z.string().email(),
-    otp: z.string().length(6),
+    otp: z.string().regex(/^\d{6}$/),
   }),
 });
 
 const LoginZodSchema = z.object({
   body: z.object({
     email: z.string().email(),
-    password: z.string().min(8),
+    password: z.string().min(8).max(72),
   }),
 });
 
 const GoogleLoginZodSchema = z.object({
   body: z.object({
-    idToken: z.string(),
+    idToken: z.string().min(1).max(10000),
   }),
 });
 
@@ -44,10 +45,11 @@ const ForgotPasswordZodSchema = z.object({
 const ResetPasswordZodSchema = z.object({
   body: z.object({
     email: z.string().email(),
-    otp: z.string().length(6),
+    otp: z.string().regex(/^\d{6}$/),
     newPassword: z
       .string()
       .min(8)
+      .max(72)
       .regex(/[a-z]/)
       .regex(/[A-Z]/)
       .regex(/[0-9]/)
