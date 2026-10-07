@@ -1,4 +1,4 @@
-const handleCastError = (err: any) => {
+const handleCastError = (err: { path?: string; message?: string }) => {
   const statusCode = 400;
   
   const errorSources = [

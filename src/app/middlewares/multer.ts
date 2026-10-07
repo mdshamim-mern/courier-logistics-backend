@@ -1,5 +1,5 @@
-import multer, { FileFilterCallback } from "multer";
-import { Request } from "express";
+import multer, { type FileFilterCallback } from "multer";
+import type { Request } from "express";
 import httpStatus from "http-status";
 import { AppError } from "../errors/AppError";
 
@@ -27,7 +27,8 @@ const fileFilter = (
 export const upload = multer({
   storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB
+    fileSize: 5 * 1024 * 1024,
+    files: 1,
   },
   fileFilter,
 });

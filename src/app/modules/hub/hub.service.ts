@@ -1,8 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../utils/prisma";
+import type { Prisma } from "@prisma/client";
+import { listQuerySchema } from "../../utils/query";
 import httpStatus from "http-status";
 import { AppError } from "../../errors/AppError";
-
-const prisma = new PrismaClient();
 
 const createHub = async (payload: { name: string; location: string; address: string }) => {
   const isExist = await prisma.hub.findUnique({
@@ -20,13 +20,13 @@ const createHub = async (payload: { name: string; location: string; address: str
   return result;
 };
 
-const getAllHubs = async (query: any) => {
-  const { searchTerm, page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc" } = query;
+const getAllHubs = async (query: unknown) => {
+  const { searchTerm, page, limit, sortBy, sortOrder } = listQuerySchema.parse(query);
   
   const skip = (Number(page) - 1) * Number(limit);
   const take = Number(limit);
 
-  const andConditions: any[] = [{ isDeleted: false }];
+  const andConditions: Prisma.HubWhereInput[] = [{ isDeleted: false }];
 
   if (searchTerm) {
     andConditions.push({

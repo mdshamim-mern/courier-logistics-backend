@@ -1,4 +1,4 @@
-import { ZodError, ZodIssue } from "zod";
+import type { ZodError, ZodIssue } from "zod";
 
 const handleZodError = (err: ZodError) => {
   const errorSources = err.issues.map((issue: ZodIssue) => {

@@ -1,79 +1,44 @@
 import { Prisma } from "@prisma/client";
-import { ErrorRequestHandler } from "express";
+import type { ErrorRequestHandler } from "express";
+import { JsonWebTokenError, TokenExpiredError, NotBeforeError } from "jsonwebtoken";
+import multer from "multer";
 import { ZodError } from "zod";
 import config from "../config";
 import { AppError } from "../errors/AppError";
-import handleCastError from "../errors/handleCastError";
-import handleDuplicateError from "../errors/handleDuplicateError";
-import handlePrismaError from "../errors/handlePrismaError";
-import handleZodError from "../errors/handleZodError";
+import { logger } from "../utils/logger";
 
-const globalErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
+const globalErrorHandler: ErrorRequestHandler = (error, req, res, next) => {
+  if (res.headersSent) return next(error);
   let statusCode = 500;
-  let message = "Something went wrong!";
-  let errorSources: { path: string | number; message: string }[] = [
-    {
-      path: "",
-      message: "Something went wrong",
-    },
-  ];
-
-  if (err instanceof ZodError) {
-    const simplifiedError = handleZodError(err);
-    statusCode = simplifiedError?.statusCode;
-    message = simplifiedError?.message;
-    errorSources = simplifiedError?.errorSources;
-  } else if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    if (err.code === "P2002") {
-      const simplifiedError = handleDuplicateError(err);
-      statusCode = simplifiedError?.statusCode;
-      message = simplifiedError?.message;
-      errorSources = simplifiedError?.errorSources;
-    } else {
-      const simplifiedError = handlePrismaError(err);
-      statusCode = simplifiedError?.statusCode;
-      message = simplifiedError?.message;
-      errorSources = simplifiedError?.errorSources;
-    }
-  } else if (err instanceof Prisma.PrismaClientValidationError) {
+  let message = "An unexpected error occurred";
+  let errors: { path: string; message: string }[] = [];
+  if (error instanceof ZodError) {
     statusCode = 400;
-    message = "Validation Error";
-    errorSources = [
-      {
-        path: "",
-        message: err.message,
-      },
-    ];
-  } else if (err?.name === "CastError") {
-    const simplifiedError = handleCastError(err);
-    statusCode = simplifiedError?.statusCode;
-    message = simplifiedError?.message;
-    errorSources = simplifiedError?.errorSources;
-  } else if (err instanceof AppError) {
-    statusCode = err?.statusCode;
-    message = err?.message;
-    errorSources = [
-      {
-        path: "",
-        message: err?.message,
-      },
-    ];
-  } else if (err instanceof Error) {
-    message = err.message;
-    errorSources = [
-      {
-        path: "",
-        message: err?.message,
-      },
-    ];
+    message = "Validation failed";
+    errors = error.issues.map(issue => ({ path: issue.path.join("."), message: issue.message }));
+  } else if (error instanceof TokenExpiredError || error instanceof JsonWebTokenError || error instanceof NotBeforeError) {
+    statusCode = 401;
+    message = "Invalid or expired session";
+  } else if (error instanceof AppError) {
+    statusCode = error.statusCode;
+    message = error.message;
+  } else if (error instanceof multer.MulterError) {
+    statusCode = error.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+    message = error.code === "LIMIT_FILE_SIZE" ? "Image exceeds the 5 MB limit" : "Invalid upload";
+  } else if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") { statusCode = 409; message = "Record already exists"; }
+    if (error.code === "P2025") { statusCode = 404; message = "Record not found"; }
+    if (error.code === "P2003") { statusCode = 400; message = "Related record is invalid"; }
+    if (error.code === "P2034") { statusCode = 409; message = "Record changed, please try again"; }
+  } else if (error?.type === "entity.parse.failed") {
+    statusCode = 400;
+    message = "Invalid JSON request";
+  } else if (error?.type === "entity.too.large") {
+    statusCode = 413;
+    message = "Request body is too large";
   }
-
-  res.status(statusCode).json({
-    success: false,
-    message,
-    errors: errorSources,
-    stack: config.env === "development" ? err?.stack : null,
-  });
+  if (statusCode >= 500) logger.error("request_failed", { requestId: res.getHeader("X-Request-ID"), path: req.path, code: error?.code, name: error?.name });
+  if (!errors.length) errors = [{ path: "", message }];
+  res.status(statusCode).json({ success: false, message, errors, requestId: res.getHeader("X-Request-ID"), ...(config.env === "development" ? { stack: error?.stack } : {}) });
 };
-
 export default globalErrorHandler;

@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import httpStatus from "http-status";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
@@ -48,6 +48,11 @@ const stripeCallback = catchAsync(async (req: Request, res: Response) => {
 });
 
 
+const reconcilePayment = catchAsync(async (req: Request, res: Response) => {
+  const result = await PaymentService.reconcilePayment(req.body.shipmentId, req.user.userId);
+  sendResponse(res, { statusCode: httpStatus.OK, success: true, message: "Payment status checked with provider", data: result });
+});
+
 const getPayments = catchAsync(async (req: Request, res: Response) => {
   const result = await PaymentService.getPayments(req.query, req.user);
 
@@ -72,6 +77,7 @@ const getSinglePayment = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const PaymentController = {
+  reconcilePayment,
   initiatePayment,
   bkashCallback,
   initiateStripePayment,

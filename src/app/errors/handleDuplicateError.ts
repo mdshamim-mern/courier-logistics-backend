@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 
 const handleDuplicateError = (err: Prisma.PrismaClientKnownRequestError) => {
   const target = err.meta?.target as string[];

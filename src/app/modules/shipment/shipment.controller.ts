@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import httpStatus from "http-status";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
@@ -27,6 +27,11 @@ const getAllShipments = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getShipmentSummary = catchAsync(async (req: Request, res: Response) => {
+  const result = await ShipmentService.getShipmentSummary(req.user);
+  sendResponse(res, { statusCode: httpStatus.OK, success: true, message: "Shipment summary retrieved", data: result });
+});
+
 const getSingleShipment = catchAsync(async (req: Request, res: Response) => {
   const result = await ShipmentService.getSingleShipment(req.params.id, req.user);
 
@@ -36,6 +41,11 @@ const getSingleShipment = catchAsync(async (req: Request, res: Response) => {
     message: "Shipment retrieved successfully",
     data: result,
   });
+});
+
+const trackShipment = catchAsync(async (req: Request, res: Response) => {
+  const result = await ShipmentService.trackShipment(req.params.trackingId);
+  sendResponse(res, { statusCode: httpStatus.OK, success: true, message: "Tracking retrieved successfully", data: result });
 });
 
 const assignCourier = catchAsync(async (req: Request, res: Response) => {
@@ -72,6 +82,8 @@ const cancelShipment = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const ShipmentController = {
+  getShipmentSummary,
+  trackShipment,
   createShipment,
   getAllShipments,
   getSingleShipment,
