@@ -1,6 +1,7 @@
 import { type Prisma, Role, UserStatus } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../utils/prisma";
+import { lockCourier } from "../../utils/rowLocks";
 import { listQuerySchema } from "../../utils/query";
 import { ACTIVE_SHIPMENT_STATUSES } from "../shipment/shipment.rules";
 import httpStatus from "http-status";
@@ -167,7 +168,7 @@ const updateUserRole = async (userId: string, role: Role, adminId: string) => {
   const result = await prisma.$transaction(async (tx) => {
     const currentUser = await lockAdminMutation(tx, userId, adminId);
     if (currentUser.role === Role.ADMIN && role !== Role.ADMIN) await assertAnotherAdmin(tx);
-    await tx.$queryRaw`SELECT "id" FROM "couriers" WHERE "userId" = ${userId} FOR UPDATE`;
+    await lockCourier(tx, userId);
     if (currentUser.role === Role.COURIER && role !== Role.COURIER) {
       const active = await tx.shipment.count({ where: { courierId: userId, isDeleted: false, status: { in: ACTIVE_SHIPMENT_STATUSES } } });
       if (active) throw new AppError(409, "Complete or reassign the courier deliveries before changing role");

@@ -2,7 +2,7 @@
 
 মূল কাঠামো রেখে সংশোধিত ফাইলের বর্তমান কোড নিচে আছে। প্রতিটি কোডের আগে সম্পূর্ণ স্থানীয় পথ দেওয়া হয়েছে। বাস্তব শংসাপত্রের ফাইল অন্তর্ভুক্ত করা হয়নি। যেগুলোতে কার্যকর পরিবর্তনের বদলে টাইপের আমদানি, ভাষা-সচেতন লিংক বা প্রবেশযোগ্যতার সংশোধন হয়েছে, সেগুলোও অন্তর্ভুক্ত।
 
-মোট কোড ফাইল: 62।
+মোট কোড ফাইল: 69।
 
 অন্যান্য পরিবর্তিত ফাইল:
 
@@ -21,6 +21,11 @@ FRONTEND_URL="http://localhost:3000"
 
 DATABASE_URL="postgresql://user:password@localhost:5432/courier_db?schema=public"
 REDIS_URL="redis://localhost:6379"
+STAGING_DATABASE_URL=""
+INTEGRATION_DATABASE_URL=""
+INTEGRATION_REDIS_URL=""
+PRISMA_TRANSACTION_MAX_WAIT_MS=10000
+PRISMA_TRANSACTION_TIMEOUT_MS=20000
 
 JWT_ACCESS_SECRET="replace-with-a-random-access-secret-of-32-or-more-characters"
 JWT_ACCESS_EXPIRES_IN="15m"
@@ -125,6 +130,9 @@ jobs:
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "test:integration": "tsx --test tests/integration/*.test.ts",
+    "test:staging": "node scripts/staging-integration.mjs",
+    "test:providers": "node scripts/provider-smoke.mjs",
+    "test:bkash:interactive": "node scripts/bkash-interactive.mjs",
     "lint": "biome lint src",
     "db:deploy": "prisma migrate deploy"
   },
@@ -678,6 +686,8 @@ const environmentSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(5000),
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
+  PRISMA_TRANSACTION_MAX_WAIT_MS: z.coerce.number().int().min(1000).max(30000).default(10000),
+  PRISMA_TRANSACTION_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(20000),
   FRONTEND_URL: z.string().url().default("http://localhost:3000"),
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
@@ -705,6 +715,8 @@ export default {
   env: environment.NODE_ENV,
   port: environment.PORT,
   database_url: environment.DATABASE_URL,
+  prisma_transaction_max_wait_ms: environment.PRISMA_TRANSACTION_MAX_WAIT_MS,
+  prisma_transaction_timeout_ms: environment.PRISMA_TRANSACTION_TIMEOUT_MS,
   frontend_url: environment.FRONTEND_URL.replace(/\/$/, ""),
   bcrypt_salt_rounds: environment.BCRYPT_SALT_ROUNDS,
   jwt_access_secret: environment.JWT_ACCESS_SECRET,
@@ -1195,6 +1207,7 @@ export const AdminController = {
 import { type Prisma, Role, UserStatus } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../utils/prisma";
+import { lockCourier } from "../../utils/rowLocks";
 import { listQuerySchema } from "../../utils/query";
 import { ACTIVE_SHIPMENT_STATUSES } from "../shipment/shipment.rules";
 import httpStatus from "http-status";
@@ -1361,7 +1374,7 @@ const updateUserRole = async (userId: string, role: Role, adminId: string) => {
   const result = await prisma.$transaction(async (tx) => {
     const currentUser = await lockAdminMutation(tx, userId, adminId);
     if (currentUser.role === Role.ADMIN && role !== Role.ADMIN) await assertAnotherAdmin(tx);
-    await tx.$queryRaw`SELECT "id" FROM "couriers" WHERE "userId" = ${userId} FOR UPDATE`;
+    await lockCourier(tx, userId);
     if (currentUser.role === Role.COURIER && role !== Role.COURIER) {
       const active = await tx.shipment.count({ where: { courierId: userId, isDeleted: false, status: { in: ACTIVE_SHIPMENT_STATUSES } } });
       if (active) throw new AppError(409, "Complete or reassign the courier deliveries before changing role");
@@ -2541,6 +2554,7 @@ import Stripe from "stripe";
 import config from "../../config";
 import { AppError } from "../../errors/AppError";
 import { prisma } from "../../utils/prisma";
+import { lockShipment } from "../../utils/rowLocks";
 import { listQuerySchema } from "../../utils/query";
 import { redisClient } from "../../utils/redis";
 import { assertBkashPayment, assertStripePayment } from "./payment.gateway";
@@ -2591,7 +2605,7 @@ const getBkashToken = async (): Promise<string> => {
 };
 
 const prepareAttempt = async (shipmentId: string, userId: string, gateway: PaymentGateway) => prisma.$transaction(async tx => {
-  await tx.$queryRaw`SELECT "id" FROM "shipments" WHERE "id" = ${shipmentId} FOR UPDATE`;
+  await lockShipment(tx, shipmentId);
   const shipment = await tx.shipment.findUnique({ where: { id: shipmentId, isDeleted: false }, include: { sender: { select: { email: true } } } });
   if (!shipment) throw new AppError(404, "Shipment not found");
   if (shipment.senderId !== userId) throw new AppError(403, "Unauthorized shipment");
@@ -2616,11 +2630,12 @@ const prepareAttempt = async (shipmentId: string, userId: string, gateway: Payme
 const completeAttempt = async (attemptId: string, providerTransactionId: string, summary: Prisma.InputJsonObject) => prisma.$transaction(async tx => {
   const lookup = await tx.paymentAttempt.findUnique({ where: { id: attemptId }, include: { payment: true } });
   if (!lookup) throw new AppError(404, "Payment attempt not found");
-  await tx.$queryRaw`SELECT "id" FROM "shipments" WHERE "id" = ${lookup.payment.shipmentId} FOR UPDATE`;
+  await lockShipment(tx, lookup.payment.shipmentId);
   const attempt = await tx.paymentAttempt.findUniqueOrThrow({ where: { id: attemptId }, include: { payment: true } });
   if (attempt.status === PaymentStatus.PAID) return attempt.payment;
   const paidAt = new Date();
-  await tx.paymentAttempt.update({ where: { id: attempt.id }, data: { status: PaymentStatus.PAID, providerTransactionId, paidAt, gatewayResponse: summary } });
+  const claimed = await tx.paymentAttempt.updateMany({ where: { id: attempt.id, status: { not: PaymentStatus.PAID } }, data: { status: PaymentStatus.PAID, providerTransactionId, paidAt, gatewayResponse: summary } });
+  if (claimed.count === 0) return tx.payment.findUniqueOrThrow({ where: { id: attempt.paymentId } });
   if (attempt.payment.status === PaymentStatus.PAID || attempt.payment.status === PaymentStatus.REFUNDED) {
     await tx.auditLog.create({ data: { action: "PAYMENT_REQUIRES_REVIEW", entityId: attempt.payment.shipmentId, entityType: "SHIPMENT", details: { attemptId, providerTransactionId, reason: "additional_payment" } } });
     return attempt.payment;
@@ -2640,7 +2655,7 @@ const completeAttempt = async (attemptId: string, providerTransactionId: string,
 const failAttempt = async (attemptId: string, status: "FAILED" | "CANCELLED") => prisma.$transaction(async tx => {
   const attempt = await tx.paymentAttempt.findUnique({ where: { id: attemptId }, include: { payment: true } });
   if (!attempt) throw new AppError(404, "Payment attempt not found");
-  await tx.$queryRaw`SELECT "id" FROM "shipments" WHERE "id" = ${attempt.payment.shipmentId} FOR UPDATE`;
+  await lockShipment(tx, attempt.payment.shipmentId);
   const changed = await tx.paymentAttempt.updateMany({ where: { id: attemptId, status: { not: PaymentStatus.PAID } }, data: { status } });
   if (changed.count) {
     await tx.payment.updateMany({ where: { id: attempt.paymentId, status: { notIn: [PaymentStatus.PAID, PaymentStatus.REFUNDED] } }, data: { status } });
@@ -3043,6 +3058,7 @@ import { z } from "zod";
 import config from "../../config";
 import { AppError } from "../../errors/AppError";
 import { prisma } from "../../utils/prisma";
+import { lockCourier, lockShipment } from "../../utils/rowLocks";
 import { listQuerySchema } from "../../utils/query";
 import { ACTIVE_SHIPMENT_STATUSES, nextShipmentStatuses } from "./shipment.rules";
 import { ShipmentValidation } from "./shipment.validation";
@@ -3152,8 +3168,8 @@ const trackShipment = async (trackingId: string) => {
 };
 
 const assignCourier = async (shipmentId: string, courierId: string, adminId: string) => prisma.$transaction(async tx => {
-  await tx.$queryRaw`SELECT "id" FROM "couriers" WHERE "userId" = ${courierId} FOR UPDATE`;
-  await tx.$queryRaw`SELECT "id" FROM "shipments" WHERE "id" = ${shipmentId} FOR UPDATE`;
+  await lockCourier(tx, courierId);
+  await lockShipment(tx, shipmentId);
   const shipment = await tx.shipment.findUnique({ where: { id: shipmentId, isDeleted: false } });
   if (!shipment) throw new AppError(404, "Shipment not found");
   if (shipment.status !== ShipmentStatus.PENDING || shipment.courierId) throw new AppError(409, "Shipment is no longer available for assignment");
@@ -3172,7 +3188,7 @@ const assignCourier = async (shipmentId: string, courierId: string, adminId: str
 });
 
 const updateShipmentStatus = async (shipmentId: string, status: ShipmentStatus, userId: string, role: string, hubId?: string, note?: string) => prisma.$transaction(async tx => {
-  await tx.$queryRaw`SELECT "id" FROM "shipments" WHERE "id" = ${shipmentId} FOR UPDATE`;
+  await lockShipment(tx, shipmentId);
   const shipment = await tx.shipment.findUnique({ where: { id: shipmentId, isDeleted: false }, include: { payment: { select: { status: true } } } });
   if (!shipment) throw new AppError(404, "Shipment not found");
   if (role === "COURIER" && shipment.courierId !== userId) throw new AppError(403, "You can only update assigned shipments");
@@ -3201,7 +3217,7 @@ const updateShipmentStatus = async (shipmentId: string, status: ShipmentStatus, 
 });
 
 const cancelShipment = async (shipmentId: string, userId: string) => prisma.$transaction(async tx => {
-  await tx.$queryRaw`SELECT "id" FROM "shipments" WHERE "id" = ${shipmentId} FOR UPDATE`;
+  await lockShipment(tx, shipmentId);
   const shipment = await tx.shipment.findUnique({ where: { id: shipmentId, isDeleted: false }, include: { payment: { select: { status: true } } } });
   if (!shipment) throw new AppError(404, "Shipment not found");
   if (shipment.senderId !== userId) throw new AppError(403, "You cannot cancel this shipment");
@@ -3596,10 +3612,16 @@ export const logger = {
 
 ```ts
 import { PrismaClient } from "@prisma/client";
+import config from "../config";
 
 const globalDatabase = globalThis as unknown as { prisma?: PrismaClient };
 
-export const prisma = globalDatabase.prisma ?? new PrismaClient();
+export const prisma = globalDatabase.prisma ?? new PrismaClient({
+  transactionOptions: {
+    maxWait: config.prisma_transaction_max_wait_ms,
+    timeout: config.prisma_transaction_timeout_ms,
+  },
+});
 
 if (process.env.NODE_ENV !== "production") {
   globalDatabase.prisma = prisma;
@@ -3821,7 +3843,12 @@ process.env.STRIPE_WEBHOOK_SECRET = "whsec_local_fixture";
 
 ```ts
 const databaseUrl = process.env.INTEGRATION_DATABASE_URL;
-if (!databaseUrl || !new URL(databaseUrl).pathname.endsWith("_test")) throw new Error("INTEGRATION_DATABASE_URL must point to a dedicated database ending in _test");
+const parsedUrl = databaseUrl ? new URL(databaseUrl) : undefined;
+const isolatedSchema = parsedUrl?.searchParams.get("schema");
+const ownedStagingSchema = process.env.INTEGRATION_OWNED_SCHEMA;
+const dedicatedDatabase = parsedUrl?.pathname.endsWith("_test");
+const dedicatedSchema = isolatedSchema === ownedStagingSchema && /^courier_integration_[a-f0-9]{32}_test$/.test(isolatedSchema ?? "");
+if (!databaseUrl || (!dedicatedDatabase && !dedicatedSchema)) throw new Error("Integration tests require a dedicated _test database or a runner-owned staging schema");
 process.env.DATABASE_URL = databaseUrl;
 const redisUrl = process.env.INTEGRATION_REDIS_URL;
 if (!redisUrl) throw new Error("INTEGRATION_REDIS_URL must point to a dedicated test Redis instance or database");
@@ -4165,3 +4192,412 @@ export default defineConfig({
 ```
 
 নথির সমাপ্তি।
+
+
+## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\scripts\staging-integration.mjs
+
+```javascript
+import { randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import dotenv from "dotenv";
+import pg from "pg";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+dotenv.config({ path: path.join(root, ".env") });
+const stagingUrl = process.env.STAGING_DATABASE_URL;
+const redisUrl = process.env.INTEGRATION_REDIS_URL;
+if (!stagingUrl || !redisUrl) throw new Error("STAGING_DATABASE_URL and INTEGRATION_REDIS_URL are required");
+const schema = `courier_integration_${randomUUID().replaceAll("-", "")}_test`;
+const target = new URL(stagingUrl);
+target.searchParams.set("schema", schema);
+const client = new pg.Client({ connectionString: stagingUrl, connectionTimeoutMillis: 15000, query_timeout: 15000 });
+const environment = { ...process.env, DATABASE_URL: target.toString(), INTEGRATION_DATABASE_URL: target.toString(), INTEGRATION_OWNED_SCHEMA: schema, NODE_ENV: "test" };
+let ownedOid;
+let connected = false;
+let failed = false;
+function run(task, args) {
+  const result = spawnSync(process.execPath, args, { cwd: root, env: environment, encoding: "utf8", timeout: 300000, windowsHide: true });
+  const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
+  const summary = { task, exitCode: result.status, errorCode: result.error?.code, prismaErrorCodes: [...new Set(output.match(/\bP\d{4}\b/g) ?? [])] };
+  if (task === "integration_tests") {
+    summary.results = output.split(/\r?\n/).filter(line => /^(?:ok \d+ - |not ok \d+ - |# (?:tests|pass|fail|cancelled|skipped|duration_ms) )/.test(line));
+    let safeOutput = output;
+    for (const [key, value] of Object.entries(process.env)) {
+      if (value && value.length > 3 && /SECRET|PASSWORD|URL|KEY|EMAIL|TOKEN/.test(key)) safeOutput = safeOutput.replaceAll(value, "[REDACTED]");
+    }
+    safeOutput = safeOutput.replace(/(?:https?|postgres(?:ql)?|rediss?):\/\/\S+/g, "[REDACTED_URL]");
+    const lines = safeOutput.split(/\r?\n/);
+    summary.diagnostics = [];
+    for (let index = 0; index < lines.length; index++) {
+      if (/^\s+error:/.test(lines[index])) {
+        summary.diagnostics.push(...lines.slice(index, index + 22).filter(line => !/^\s*(?:stack:|at )/.test(line)));
+      }
+    }
+    summary.diagnostics = summary.diagnostics.slice(0, 60);
+  } else {
+    summary.migrationsApplied = output.includes("All migrations have been successfully applied");
+  }
+  console.log(JSON.stringify(summary));
+  if (result.status !== 0) throw new Error(`${task} failed`);
+}
+try {
+  await client.connect();
+  connected = true;
+  await client.query(`CREATE SCHEMA "${schema}"`);
+  const created = await client.query("SELECT oid FROM pg_namespace WHERE nspname = $1", [schema]);
+  ownedOid = created.rows[0]?.oid;
+  if (!ownedOid) throw new Error("Cannot verify ownership of the temporary schema");
+  console.log(JSON.stringify({ task: "isolated_staging_schema", created: true }));
+  run("isolated_schema_migrations", ["node_modules/prisma/build/index.js", "migrate", "deploy"]);
+  run("integration_tests", ["--import", "tsx", "--test", "--test-reporter=tap", "tests/integration/transactions.test.ts"]);
+} catch (error) {
+  failed = true;
+  console.log(JSON.stringify({ task: "staging_integration_runner", success: false, errorCode: error.code ?? error.name }));
+} finally {
+  if (connected && ownedOid) {
+    try {
+      const current = await client.query("SELECT oid FROM pg_namespace WHERE nspname = $1", [schema]);
+      if (current.rows[0]?.oid !== ownedOid) throw new Error("Temporary schema ownership changed");
+      await client.query(`DROP SCHEMA "${schema}" CASCADE`);
+      console.log(JSON.stringify({ task: "isolated_schema_cleanup", success: true }));
+    } catch (error) {
+      failed = true;
+      console.log(JSON.stringify({ task: "isolated_schema_cleanup", success: false, errorCode: error.code ?? error.name, schema }));
+    }
+  }
+  await client.end().catch(() => undefined);
+}
+if (failed) process.exitCode = 1;
+```
+
+
+## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\scripts\provider-smoke.mjs
+
+```javascript
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
+import Stripe from "stripe";
+import nodemailer from "nodemailer";
+import { v2 as cloudinary } from "cloudinary";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+dotenv.config({ path: path.join(root, ".env") });
+const env = process.env;
+const runId = randomUUID();
+const results = [];
+const onlyIndex = process.argv.indexOf("--only");
+const selectedProvider = onlyIndex === -1 ? undefined : process.argv[onlyIndex + 1];
+if (onlyIndex !== -1 && !["stripe", "bkash", "email", "image"].includes(selectedProvider)) throw new Error("--only requires stripe, bkash, email, or image");
+async function run(provider, operation) {
+  if (selectedProvider && provider !== selectedProvider) return;
+  try {
+    const result = await operation();
+    results.push({ provider, ...result });
+  } catch (error) {
+    const code = typeof error.code === "string" && /^[a-zA-Z0-9_-]{1,64}$/.test(error.code) ? error.code : undefined;
+    results.push({ provider, status: "failed", errorType: error.type ?? error.name, code, httpStatus: error.statusCode ?? error.http_code, smtpResponseCode: error.responseCode });
+  }
+  console.log(JSON.stringify(results.at(-1)));
+}
+
+await run("stripe", async () => {
+  if (!env.STRIPE_SECRET_KEY?.startsWith("sk_test_")) return { status: "blocked", reason: "test_key_required" };
+  const stripe = new Stripe(env.STRIPE_SECRET_KEY, { timeout: 15000, maxNetworkRetries: 0 });
+  const balance = await stripe.balance.retrieve();
+  assert.equal(balance.livemode, false);
+  const payment = await stripe.paymentIntents.create({
+    amount: 12000, currency: "bdt", payment_method: "pm_card_visa", automatic_payment_methods: { enabled: true, allow_redirects: "never" },
+    confirm: true, metadata: { purpose: "courier_provider_smoke", runId }, description: "Courier staging provider smoke test",
+  }, { idempotencyKey: `courier-smoke-${runId}` });
+  assert.equal(payment.livemode, false);
+  assert.equal(payment.status, "succeeded");
+  const verified = await stripe.paymentIntents.retrieve(payment.id);
+  assert.equal(verified.amount_received, 12000);
+  assert.equal(verified.currency, "bdt");
+  let signatureCheck = false;
+  if (env.STRIPE_WEBHOOK_SECRET?.startsWith("whsec_")) {
+    const payload = JSON.stringify({ id: `evt_smoke_${runId}`, object: "event", type: "payment_intent.succeeded", data: { object: verified } });
+    const signature = stripe.webhooks.generateTestHeaderString({ payload, secret: env.STRIPE_WEBHOOK_SECRET });
+    const event = stripe.webhooks.constructEvent(payload, signature, env.STRIPE_WEBHOOK_SECRET);
+    signatureCheck = event.data.object.id === payment.id;
+  }
+  return { status: "passed", scope: "direct_provider_api", paymentId: payment.id, currency: "BDT", amount: "120.00", retrievedStatus: verified.status, localSignatureCheck: signatureCheck, externalWebhookDelivery: "not_tested", applicationCheckoutSettlement: "not_tested" };
+});
+
+await run("bkash", async () => {
+  if (!env.BKASH_BASE_URL || new URL(env.BKASH_BASE_URL).hostname !== "tokenized.sandbox.bka.sh") return { status: "blocked", reason: "sandbox_url_required" };
+  const base = env.BKASH_BASE_URL.replace(/\/$/, "");
+  async function request(route, body, token) {
+    const headers = { "Content-Type": "application/json", Accept: "application/json" };
+    if (token) { headers.Authorization = token; headers["X-App-Key"] = env.BKASH_APP_KEY; }
+    else { headers.username = env.BKASH_USERNAME; headers.password = env.BKASH_PASSWORD; }
+    const response = await fetch(`${base}/tokenized/checkout/${route}`, { method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+    if (!response.ok) { const error = new Error("bKash HTTP error"); error.statusCode = response.status; throw error; }
+    return response.json();
+  }
+  const grant = await request("token/grant", { app_key: env.BKASH_APP_KEY, app_secret: env.BKASH_APP_SECRET });
+  if (grant.statusCode !== "0000" || typeof grant.id_token !== "string") return { status: "failed", stage: "authentication", providerCode: grant.statusCode };
+  if (!env.BKASH_CALLBACK_URL) return { status: "blocked", stage: "create", reason: "callback_required" };
+  const payment = await request("create", { mode: "0011", payerReference: `courier-smoke-${runId}`, callbackURL: env.BKASH_CALLBACK_URL, amount: "120.00", currency: "BDT", intent: "sale", merchantInvoiceNumber: runId }, grant.id_token);
+  if (payment.statusCode !== "0000" || typeof payment.paymentID !== "string") return { status: "failed", stage: "create", providerCode: payment.statusCode };
+  const state = await request("payment/status", { paymentID: payment.paymentID }, grant.id_token);
+  return { status: "incomplete", stage: "customer_authorization_required", authentication: "passed", create: "passed", paymentId: payment.paymentID, transactionStatus: state.transactionStatus, providerCode: state.statusCode, callbackLocal: ["localhost", "127.0.0.1"].includes(new URL(env.BKASH_CALLBACK_URL).hostname), execution: "not_tested" };
+});
+
+await run("email", async () => {
+  if (!env.EMAIL_SENDER || !env.SMTP_PASSWORD) return { status: "blocked", reason: "sender_and_password_required" };
+  const transport = nodemailer.createTransport({ service: "gmail", auth: { user: env.EMAIL_SENDER, pass: env.SMTP_PASSWORD }, connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 20000 });
+  try {
+    await transport.verify();
+    const sent = await transport.sendMail({ from: env.EMAIL_SENDER, to: env.EMAIL_SENDER, subject: "Courier staging email test", text: `এটি কুরিয়ার প্রকল্পের পরীক্ষামূলক ইমেইল। পরীক্ষার পরিচয়: ${runId}`, html: `<p>এটি কুরিয়ার প্রকল্পের পরীক্ষামূলক ইমেইল।</p><p>পরীক্ষার পরিচয়: ${runId}</p>` });
+    assert.equal(sent.accepted.length, 1);
+    assert.equal(sent.rejected.length, 0);
+    return { status: "passed", scope: "smtp_acceptance", authentication: "passed", acceptedRecipients: sent.accepted.length, rejectedRecipients: sent.rejected.length, recipient: "EMAIL_SENDER", inboxDelivery: "requires_recipient_confirmation", runId };
+  } finally { transport.close(); }
+});
+
+await run("image", async () => {
+  if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) return { status: "blocked", reason: "cloudinary_credentials_required" };
+  cloudinary.config({ cloud_name: env.CLOUDINARY_CLOUD_NAME, api_key: env.CLOUDINARY_API_KEY, api_secret: env.CLOUDINARY_API_SECRET, secure: true });
+  const publicId = `courier-provider-tests/${runId}`;
+  const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNoYGj4DwAEBAIAgyQ7+wAAAABJRU5ErkJggg==";
+  let uploaded;
+  let result;
+  try {
+    uploaded = await cloudinary.uploader.upload(`data:image/png;base64,${png}`, { public_id: publicId, overwrite: false, resource_type: "image", allowed_formats: ["jpg", "png", "webp"], transformation: [{ width: 512, height: 512, crop: "limit" }], timeout: 20000 });
+    assert.equal(uploaded.public_id, publicId);
+    assert.ok(uploaded.secure_url.startsWith("https://"));
+    const response = await fetch(uploaded.secure_url, { signal: AbortSignal.timeout(15000) });
+    assert.equal(response.status, 200);
+    assert.ok(response.headers.get("content-type")?.startsWith("image/"));
+    const bytes = Buffer.from(await response.arrayBuffer());
+    assert.ok(bytes.length > 8);
+    assert.ok(bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])));
+    result = { status: "passed", scope: "signed_provider_upload_and_download", format: uploaded.format, width: uploaded.width, height: uploaded.height, downloadedBytes: bytes.length, applicationProfilePersistence: "not_tested" };
+  } finally {
+    if (uploaded) {
+      const cleanup = await cloudinary.uploader.destroy(publicId, { resource_type: "image", invalidate: true, timeout: 20000 });
+      assert.equal(cleanup.result, "ok");
+      console.log(JSON.stringify({ provider: "image_cleanup", status: "passed", removedOnlyRunFixture: true }));
+    }
+  }
+  return result;
+});
+
+console.log(JSON.stringify({ task: "provider_smoke_summary", passed: results.filter(result => result.status === "passed").length, incomplete: results.filter(result => result.status === "incomplete").length, failed: results.filter(result => result.status === "failed").length, blocked: results.filter(result => result.status === "blocked").length }));
+if (results.some(result => result.status !== "passed")) process.exitCode = 1;
+```
+
+
+## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\tests\database-config.test.ts
+
+```ts
+import "./environment";
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { test } from "node:test";
+
+function configuration(overrides: Record<string, string>) {
+  return spawnSync(process.execPath, ["--import", "tsx", "--eval", "try { const config = require('./src/app/config').default; console.log(JSON.stringify({ maxWait: config.prisma_transaction_max_wait_ms, timeout: config.prisma_transaction_timeout_ms })); } catch { process.exitCode = 1; }"], {
+    cwd: process.cwd(), env: { ...process.env, ...overrides }, encoding: "utf8", timeout: 15000, windowsHide: true,
+  });
+}
+
+test("database transaction limits accept bounded explicit configuration", () => {
+  const result = configuration({ PRISMA_TRANSACTION_MAX_WAIT_MS: "10000", PRISMA_TRANSACTION_TIMEOUT_MS: "20000" });
+  assert.equal(result.status, 0);
+  assert.deepEqual(JSON.parse(result.stdout.trim()), { maxWait: 10000, timeout: 20000 });
+});
+
+test("database transaction timeout rejects zero", () => {
+  assert.equal(configuration({ PRISMA_TRANSACTION_TIMEOUT_MS: "0" }).status, 1);
+});
+
+test("database transaction timeout rejects excessive lock duration", () => {
+  assert.equal(configuration({ PRISMA_TRANSACTION_TIMEOUT_MS: "60001" }).status, 1);
+});
+
+test("database transaction acquisition wait rejects excessive duration", () => {
+  assert.equal(configuration({ PRISMA_TRANSACTION_MAX_WAIT_MS: "30001" }).status, 1);
+});
+```
+
+
+## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\tests\integration-guard.test.ts
+
+```ts
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { test } from "node:test";
+
+const schema = "courier_integration_0123456789abcdef0123456789abcdef_test";
+function guard(databaseUrl: string, ownedSchema = "") {
+  return spawnSync(process.execPath, ["--import", "tsx", "--eval", "try { require('./tests/integration/environment'); } catch { process.exitCode = 1; }"], {
+    env: { ...process.env, INTEGRATION_DATABASE_URL: databaseUrl, INTEGRATION_OWNED_SCHEMA: ownedSchema, INTEGRATION_REDIS_URL: "redis://127.0.0.1:6379/15" },
+    cwd: process.cwd(), encoding: "utf8", timeout: 15000, windowsHide: true,
+  }).status;
+}
+
+test("integration guard rejects a shared public schema", () => {
+  assert.equal(guard("postgresql://test:test@localhost:5432/courier?schema=public", "public"), 1);
+});
+
+test("integration guard rejects a staging schema without runner ownership", () => {
+  assert.equal(guard(`postgresql://test:test@localhost:5432/courier?schema=${schema}`), 1);
+});
+
+test("integration guard accepts the exact runner-owned isolated schema", () => {
+  assert.equal(guard(`postgresql://test:test@localhost:5432/courier?schema=${schema}`, schema), 0);
+});
+
+test("integration guard retains dedicated test database support", () => {
+  assert.equal(guard("postgresql://test:test@localhost:5432/courier_test"), 0);
+});
+```
+
+
+## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\tests\row-locks.test.ts
+
+```ts
+import "./environment";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { rowLockQuery } from "../src/app/utils/rowLocks";
+
+test("row locks qualify the configured schema and bind record identifiers", () => {
+  const query = rowLockQuery("shipments", "id", "record-id", "isolated_test");
+  assert.equal(query.sql, 'SELECT "id" FROM "isolated_test"."shipments" WHERE "id" = ? FOR UPDATE');
+  assert.deepEqual(query.values, ["record-id"]);
+});
+
+test("row locks escape schema identifiers without interpolating user values", () => {
+  const query = rowLockQuery("couriers", "userId", "'; DROP TABLE users; --", 'tenant"schema');
+  assert.equal(query.sql, 'SELECT "id" FROM "tenant""schema"."couriers" WHERE "userId" = ? FOR UPDATE');
+  assert.deepEqual(query.values, ["'; DROP TABLE users; --"]);
+});
+```
+
+
+## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\src\app\utils\rowLocks.ts
+
+```ts
+import { Prisma } from "@prisma/client";
+import config from "../config";
+
+const schema = new URL(config.database_url).searchParams.get("schema") ?? "public";
+export function rowLockQuery(table: "shipments" | "couriers", column: "id" | "userId", id: string, databaseSchema = schema) {
+  const qualifiedTable = Prisma.raw(`"${databaseSchema.replace(/"/g, '""')}"."${table}"`);
+  const field = Prisma.raw(`"${column}"`);
+  return Prisma.sql`SELECT "id" FROM ${qualifiedTable} WHERE ${field} = ${id} FOR UPDATE`;
+}
+
+export const lockShipment = (tx: Prisma.TransactionClient, id: string) => tx.$queryRaw(rowLockQuery("shipments", "id", id));
+export const lockCourier = (tx: Prisma.TransactionClient, userId: string) => tx.$queryRaw(rowLockQuery("couriers", "userId", userId));
+```
+
+
+## D:\NEXT_LEVEL_WEB_DEV\assignment\courier-backend\scripts\bkash-interactive.mjs
+
+```javascript
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import http from "node:http";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+dotenv.config({ path: path.join(root, ".env") });
+const env = process.env;
+if (!env.BKASH_BASE_URL || new URL(env.BKASH_BASE_URL).hostname !== "tokenized.sandbox.bka.sh") throw new Error("Only bKash sandbox is allowed");
+const callback = new URL(env.BKASH_CALLBACK_URL);
+if (callback.protocol !== "http:" || !["localhost", "127.0.0.1"].includes(callback.hostname)) throw new Error("Interactive testing requires a local HTTP callback");
+const state = randomUUID();
+callback.searchParams.set("state", state);
+let token;
+let paymentId;
+let handling = false;
+let timer;
+async function request(route, body, grant = false) {
+  const headers = { "Content-Type": "application/json", Accept: "application/json" };
+  if (grant) { headers.username = env.BKASH_USERNAME; headers.password = env.BKASH_PASSWORD; }
+  else { headers.Authorization = token; headers["X-App-Key"] = env.BKASH_APP_KEY; }
+  const response = await fetch(`${env.BKASH_BASE_URL.replace(/\/$/, "")}/tokenized/checkout/${route}`, { method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+  if (!response.ok) { const error = new Error("bKash request failed"); error.statusCode = response.status; throw error; }
+  return response.json();
+}
+function reply(res, status, text) {
+  res.writeHead(status, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
+  res.end(text);
+}
+function stop(success) {
+  clearTimeout(timer);
+  process.exitCode = success ? 0 : 1;
+  server.close();
+}
+const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url ?? "/", "http://127.0.0.1");
+  if (req.method !== "GET" || url.pathname !== callback.pathname || url.searchParams.get("state") !== state || url.searchParams.get("paymentID") !== paymentId) return reply(res, 404, "পরীক্ষার ঠিকানাটি সঠিক নয়।");
+  if (handling) return reply(res, 409, "এই লেনদেনটি যাচাই করা হচ্ছে।");
+  handling = true;
+  const callbackStatus = url.searchParams.get("status");
+  console.log(JSON.stringify({ provider: "bkash", stage: "callback", status: ["success", "failure", "cancel"].includes(callbackStatus) ? callbackStatus : "unknown" }));
+  try {
+    let result;
+    if (url.searchParams.get("status") === "success") {
+      try { result = await request("execute", { paymentID: paymentId }); }
+      catch { result = await request("payment/status", { paymentID: paymentId }); }
+      console.log(JSON.stringify({ provider: "bkash", stage: "execute_response", providerCode: result.statusCode, transactionStatus: result.transactionStatus }));
+    } else { result = await request("payment/status", { paymentID: paymentId }); }
+    if (result.transactionStatus !== "Completed") result = await request("payment/status", { paymentID: paymentId });
+    if (result.transactionStatus === "Completed") {
+      const verified = await request("payment/status", { paymentID: paymentId });
+      assert.equal(verified.statusCode, "0000");
+      assert.equal(verified.paymentID, paymentId);
+      assert.equal(verified.transactionStatus, "Completed");
+      assert.equal(verified.currency, "BDT");
+      assert.equal(Number(verified.amount), 120);
+      assert.ok(typeof verified.trxID === "string" && verified.trxID.length > 0);
+      console.log(JSON.stringify({ provider: "bkash", status: "passed", scope: "direct_sandbox_provider", paymentId, transactionId: verified.trxID, amount: "120.00", currency: "BDT", retrievedStatus: verified.transactionStatus, applicationSettlement: "not_tested" }));
+      reply(res, 200, "বিকাশের ১২০ টাকার পরীক্ষামূলক লেনদেন সফল হয়েছে। প্রদানকারীর কাছ থেকে পরিমাণ, মুদ্রা ও লেনদেনের পরিচয় আবার যাচাই করা হয়েছে। কোনো প্রকৃত অর্থপ্রদান করা হয়নি।");
+      stop(true);
+    } else {
+      console.log(JSON.stringify({ provider: "bkash", status: "incomplete", paymentId, providerCode: result.statusCode, transactionStatus: result.transactionStatus }));
+      reply(res, 409, "লেনদেনটি এখনো সফল বলে যাচাই হয়নি। কডেক্সে ফিরে পরীক্ষার অবস্থা জানান।");
+      if (["Cancelled", "Failed"].includes(result.transactionStatus)) stop(false);
+    }
+  } catch (error) {
+    console.log(JSON.stringify({ provider: "bkash", status: "failed", errorType: error.name, httpStatus: error.statusCode }));
+    reply(res, 502, "পরীক্ষামূলক লেনদেনের যাচাইয়ে সমস্যা হয়েছে। কডেক্সে ফিরে জানান।");
+  } finally { handling = false; }
+});
+try {
+  await new Promise((resolve, reject) => { server.once("error", reject); server.listen(Number(callback.port || 80), "127.0.0.1", resolve); });
+  const grant = await request("token/grant", { app_key: env.BKASH_APP_KEY, app_secret: env.BKASH_APP_SECRET }, true);
+  assert.equal(grant.statusCode, "0000");
+  assert.ok(typeof grant.id_token === "string");
+  token = grant.id_token;
+  const created = await request("create", { mode: "0011", payerReference: `courier-interactive-${state}`, callbackURL: callback.toString(), amount: "120.00", currency: "BDT", intent: "sale", merchantInvoiceNumber: state });
+  assert.equal(created.statusCode, "0000");
+  assert.ok(typeof created.paymentID === "string");
+  const checkout = new URL(created.bkashURL);
+  assert.equal(checkout.protocol, "https:");
+  assert.ok(checkout.hostname.endsWith(".bka.sh") || checkout.hostname.endsWith(".bkash.com"));
+  paymentId = created.paymentID;
+  console.log(JSON.stringify({ task: "bkash_interactive_checkout", paymentId, checkoutUrl: created.bkashURL, expiresInMinutes: 10 }));
+  timer = setTimeout(() => {
+    console.log(JSON.stringify({ provider: "bkash", status: "incomplete", paymentId, reason: "customer_authorization_timeout" }));
+    stop(false);
+  }, 600000);
+} catch (error) {
+  console.log(JSON.stringify({ provider: "bkash", status: "failed", errorType: error.name, code: error.code, httpStatus: error.statusCode }));
+  stop(false);
+}
+process.once("SIGINT", () => stop(false));
+process.once("SIGTERM", () => stop(false));
+```

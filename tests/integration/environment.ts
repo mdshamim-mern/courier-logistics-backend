@@ -1,5 +1,10 @@
 const databaseUrl = process.env.INTEGRATION_DATABASE_URL;
-if (!databaseUrl || !new URL(databaseUrl).pathname.endsWith("_test")) throw new Error("INTEGRATION_DATABASE_URL must point to a dedicated database ending in _test");
+const parsedUrl = databaseUrl ? new URL(databaseUrl) : undefined;
+const isolatedSchema = parsedUrl?.searchParams.get("schema");
+const ownedStagingSchema = process.env.INTEGRATION_OWNED_SCHEMA;
+const dedicatedDatabase = parsedUrl?.pathname.endsWith("_test");
+const dedicatedSchema = isolatedSchema === ownedStagingSchema && /^courier_integration_[a-f0-9]{32}_test$/.test(isolatedSchema ?? "");
+if (!databaseUrl || (!dedicatedDatabase && !dedicatedSchema)) throw new Error("Integration tests require a dedicated _test database or a runner-owned staging schema");
 process.env.DATABASE_URL = databaseUrl;
 const redisUrl = process.env.INTEGRATION_REDIS_URL;
 if (!redisUrl) throw new Error("INTEGRATION_REDIS_URL must point to a dedicated test Redis instance or database");
