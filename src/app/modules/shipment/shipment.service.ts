@@ -4,6 +4,7 @@ import { z } from "zod";
 import config from "../../config";
 import { AppError } from "../../errors/AppError";
 import { prisma } from "../../utils/prisma";
+import { lockCourier, lockShipment } from "../../utils/rowLocks";
 import { listQuerySchema } from "../../utils/query";
 import { ACTIVE_SHIPMENT_STATUSES, nextShipmentStatuses } from "./shipment.rules";
 import { ShipmentValidation } from "./shipment.validation";
@@ -113,8 +114,8 @@ const trackShipment = async (trackingId: string) => {
 };
 
 const assignCourier = async (shipmentId: string, courierId: string, adminId: string) => prisma.$transaction(async tx => {
-  await tx.$queryRaw`SELECT "id" FROM "couriers" WHERE "userId" = ${courierId} FOR UPDATE`;
-  await tx.$queryRaw`SELECT "id" FROM "shipments" WHERE "id" = ${shipmentId} FOR UPDATE`;
+  await lockCourier(tx, courierId);
+  await lockShipment(tx, shipmentId);
   const shipment = await tx.shipment.findUnique({ where: { id: shipmentId, isDeleted: false } });
   if (!shipment) throw new AppError(404, "Shipment not found");
   if (shipment.status !== ShipmentStatus.PENDING || shipment.courierId) throw new AppError(409, "Shipment is no longer available for assignment");
@@ -133,7 +134,7 @@ const assignCourier = async (shipmentId: string, courierId: string, adminId: str
 });
 
 const updateShipmentStatus = async (shipmentId: string, status: ShipmentStatus, userId: string, role: string, hubId?: string, note?: string) => prisma.$transaction(async tx => {
-  await tx.$queryRaw`SELECT "id" FROM "shipments" WHERE "id" = ${shipmentId} FOR UPDATE`;
+  await lockShipment(tx, shipmentId);
   const shipment = await tx.shipment.findUnique({ where: { id: shipmentId, isDeleted: false }, include: { payment: { select: { status: true } } } });
   if (!shipment) throw new AppError(404, "Shipment not found");
   if (role === "COURIER" && shipment.courierId !== userId) throw new AppError(403, "You can only update assigned shipments");
@@ -162,7 +163,7 @@ const updateShipmentStatus = async (shipmentId: string, status: ShipmentStatus, 
 });
 
 const cancelShipment = async (shipmentId: string, userId: string) => prisma.$transaction(async tx => {
-  await tx.$queryRaw`SELECT "id" FROM "shipments" WHERE "id" = ${shipmentId} FOR UPDATE`;
+  await lockShipment(tx, shipmentId);
   const shipment = await tx.shipment.findUnique({ where: { id: shipmentId, isDeleted: false }, include: { payment: { select: { status: true } } } });
   if (!shipment) throw new AppError(404, "Shipment not found");
   if (shipment.senderId !== userId) throw new AppError(403, "You cannot cancel this shipment");

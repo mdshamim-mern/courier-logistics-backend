@@ -13,6 +13,9 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "test:integration": "tsx --test tests/integration/*.test.ts",
+    "test:staging": "node scripts/staging-integration.mjs",
+    "test:providers": "node scripts/provider-smoke.mjs",
+    "test:bkash:interactive": "node scripts/bkash-interactive.mjs",
     "lint": "biome lint src",
     "db:deploy": "prisma migrate deploy"
   },

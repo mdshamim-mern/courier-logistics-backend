@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import config from "../../config";
 import { AppError } from "../../errors/AppError";
 import { prisma } from "../../utils/prisma";
+import { lockShipment } from "../../utils/rowLocks";
 import { listQuerySchema } from "../../utils/query";
 import { redisClient } from "../../utils/redis";
 import { assertBkashPayment, assertStripePayment } from "./payment.gateway";
@@ -53,7 +54,7 @@ const getBkashToken = async (): Promise<string> => {
 };
 
 const prepareAttempt = async (shipmentId: string, userId: string, gateway: PaymentGateway) => prisma.$transaction(async tx => {
-  await tx.$queryRaw`SELECT "id" FROM "shipments" WHERE "id" = ${shipmentId} FOR UPDATE`;
+  await lockShipment(tx, shipmentId);
   const shipment = await tx.shipment.findUnique({ where: { id: shipmentId, isDeleted: false }, include: { sender: { select: { email: true } } } });
   if (!shipment) throw new AppError(404, "Shipment not found");
   if (shipment.senderId !== userId) throw new AppError(403, "Unauthorized shipment");
@@ -78,11 +79,12 @@ const prepareAttempt = async (shipmentId: string, userId: string, gateway: Payme
 const completeAttempt = async (attemptId: string, providerTransactionId: string, summary: Prisma.InputJsonObject) => prisma.$transaction(async tx => {
   const lookup = await tx.paymentAttempt.findUnique({ where: { id: attemptId }, include: { payment: true } });
   if (!lookup) throw new AppError(404, "Payment attempt not found");
-  await tx.$queryRaw`SELECT "id" FROM "shipments" WHERE "id" = ${lookup.payment.shipmentId} FOR UPDATE`;
+  await lockShipment(tx, lookup.payment.shipmentId);
   const attempt = await tx.paymentAttempt.findUniqueOrThrow({ where: { id: attemptId }, include: { payment: true } });
   if (attempt.status === PaymentStatus.PAID) return attempt.payment;
   const paidAt = new Date();
-  await tx.paymentAttempt.update({ where: { id: attempt.id }, data: { status: PaymentStatus.PAID, providerTransactionId, paidAt, gatewayResponse: summary } });
+  const claimed = await tx.paymentAttempt.updateMany({ where: { id: attempt.id, status: { not: PaymentStatus.PAID } }, data: { status: PaymentStatus.PAID, providerTransactionId, paidAt, gatewayResponse: summary } });
+  if (claimed.count === 0) return tx.payment.findUniqueOrThrow({ where: { id: attempt.paymentId } });
   if (attempt.payment.status === PaymentStatus.PAID || attempt.payment.status === PaymentStatus.REFUNDED) {
     await tx.auditLog.create({ data: { action: "PAYMENT_REQUIRES_REVIEW", entityId: attempt.payment.shipmentId, entityType: "SHIPMENT", details: { attemptId, providerTransactionId, reason: "additional_payment" } } });
     return attempt.payment;
@@ -102,7 +104,7 @@ const completeAttempt = async (attemptId: string, providerTransactionId: string,
 const failAttempt = async (attemptId: string, status: "FAILED" | "CANCELLED") => prisma.$transaction(async tx => {
   const attempt = await tx.paymentAttempt.findUnique({ where: { id: attemptId }, include: { payment: true } });
   if (!attempt) throw new AppError(404, "Payment attempt not found");
-  await tx.$queryRaw`SELECT "id" FROM "shipments" WHERE "id" = ${attempt.payment.shipmentId} FOR UPDATE`;
+  await lockShipment(tx, attempt.payment.shipmentId);
   const changed = await tx.paymentAttempt.updateMany({ where: { id: attemptId, status: { not: PaymentStatus.PAID } }, data: { status } });
   if (changed.count) {
     await tx.payment.updateMany({ where: { id: attempt.paymentId, status: { notIn: [PaymentStatus.PAID, PaymentStatus.REFUNDED] } }, data: { status } });
