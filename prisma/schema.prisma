@@ -79,6 +79,8 @@ model User {
   auditLogs            AuditLog[]
   shipmentTrackings    ShipmentTracking[]
   transferredShipments ShipmentTransfer[]
+  businessAccount      BusinessAccount?
+  courierApplication   CourierApplication?
 
   @@index([role])
   @@index([isDeleted])
@@ -141,6 +143,8 @@ model Hub {
 }
 
 model Shipment {
+  bookingKey String? @unique
+  bookingFingerprint String?
   id                String         @id @default(uuid())
   trackingId        String         @unique
   senderId          String
@@ -167,6 +171,22 @@ model Shipment {
   payment        Payment?
   trackings      ShipmentTracking[]
   transfers      ShipmentTransfer[]
+  deliveryProof DeliveryProof?
+  collection CashCollection?
+
+  pickupAddress String?
+  senderPhone String?
+  pickupAreaId String?
+  receiverAreaId String?
+  pickupMode String @default("HOME")
+  productType String?
+  declaredValue Decimal? @db.Decimal(10, 2)
+  codAmount Decimal @default(0) @db.Decimal(10, 2)
+  codFee Decimal @default(0) @db.Decimal(10, 2)
+  priceBreakdown Json?
+  requestedPickupAt DateTime?
+  deliveryInstructions String?
+  serviceType String @default("STANDARD")
 
   @@index([senderId])
   @@index([courierId])
@@ -269,4 +289,94 @@ model AuditLog {
 
   @@index([entityId, entityType])
   @@map("audit_logs")
+}
+
+model ServiceArea {
+  id String @id @default(uuid())
+  name String @unique
+  district String
+  upazila String
+  hubId String
+  pickupEnabled Boolean @default(false)
+  dropoffEnabled Boolean @default(false)
+  deliveryEnabled Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("service_areas")
+}
+model RatePlan {
+  id String @id @default(uuid())
+  pickupAreaId String
+  receiverAreaId String
+  serviceType String @default("STANDARD")
+  baseWeight Decimal @db.Decimal(10, 2)
+  baseCharge Decimal @db.Decimal(10, 2)
+  extraPerKg Decimal @db.Decimal(10, 2)
+  pickupFee Decimal @default(0) @db.Decimal(10, 2)
+  codPercent Decimal @default(0) @db.Decimal(5, 2)
+  deliveryDays Int
+  cutoffMinutes Int?
+  active Boolean @default(false)
+  updatedAt DateTime @updatedAt
+  @@unique([pickupAreaId, receiverAreaId, serviceType])
+  @@map("rate_plans")
+}
+model BusinessAccount {
+  id String @id @default(uuid())
+  userId String @unique
+  shopName String
+  pickupAddress String
+  contactNumber String
+  payoutMethod String
+  accountName String
+  accountNumber String
+  approved Boolean @default(false)
+  reviewNote String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("business_accounts")
+}
+model CourierApplication {
+  id String @id @default(uuid())
+  userId String @unique
+  contactNumber String
+  area String
+  vehicleType String
+  status String @default("PENDING")
+  reviewNote String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("courier_applications")
+}
+model DeliveryProof {
+  id String @id @default(uuid())
+  shipmentId String @unique
+  receiverName String
+  signature String
+  recordedById String
+  acknowledged Boolean
+  createdAt DateTime @default(now())
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  @@map("delivery_proofs")
+}
+model CashCollection {
+  id String @id @default(uuid())
+  shipmentId String @unique
+  merchantId String
+  courierId String
+  amount Decimal @db.Decimal(10, 2)
+  fee Decimal @db.Decimal(10, 2)
+  payable Decimal @db.Decimal(10, 2)
+  status String @default("COLLECTED")
+  receiptReference String? @unique
+  payoutReference String? @unique
+  receivedAt DateTime?
+  paidAt DateTime?
+  createdAt DateTime @default(now())
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  @@index([merchantId, status])
+  @@index([courierId, status])
+  @@map("cash_collections")
 }

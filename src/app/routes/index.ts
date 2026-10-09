@@ -1,4 +1,5 @@
 import express from "express";
+import { OperationsRoutes } from "../modules/operations/operations.route";
 import { AdminRoutes } from "../modules/admin/admin.route";
 import { AuditLogRoutes } from "../modules/auditLog/auditLog.route";
 import { AuthRoutes } from "../modules/auth/auth.route";
@@ -11,38 +12,39 @@ import { UserRoutes } from "../modules/user/user.route";
 const router = express.Router();
 
 const moduleRoutes = [
-  {
-    path: "/auth",
-    route: AuthRoutes,
-  },
-  {
-    path: "/users",
-    route: UserRoutes,
-  },
-  {
-    path: "/hubs",
-    route: HubRoutes,
-  },
-  {
-    path: "/shipments",
-    route: ShipmentRoutes,
-  },
-  {
-    path: "/payments",
-    route: PaymentRoutes,
-  },
-  {
-    path: "/audit-logs",
-    route: AuditLogRoutes,
-  },
-  {
-    path: "/admin",
-    route: AdminRoutes,
-  },
-  {
-    path: "/couriers",
-    route: CourierRoutes,
-  },
+	{ path: "/operations", route: OperationsRoutes },
+	{
+		path: "/auth",
+		route: AuthRoutes,
+	},
+	{
+		path: "/users",
+		route: UserRoutes,
+	},
+	{
+		path: "/hubs",
+		route: HubRoutes,
+	},
+	{
+		path: "/shipments",
+		route: ShipmentRoutes,
+	},
+	{
+		path: "/payments",
+		route: PaymentRoutes,
+	},
+	{
+		path: "/audit-logs",
+		route: AuditLogRoutes,
+	},
+	{
+		path: "/admin",
+		route: AdminRoutes,
+	},
+	{
+		path: "/couriers",
+		route: CourierRoutes,
+	},
 ];
 
 for (const route of moduleRoutes) router.use(route.path, route.route);

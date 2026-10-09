@@ -5,89 +5,121 @@ import sendResponse from "../../utils/sendResponse";
 import { ShipmentService } from "./shipment.service";
 
 const createShipment = catchAsync(async (req: Request, res: Response) => {
-  const result = await ShipmentService.createShipment(req.user.userId, req.body);
+	const result = await ShipmentService.createShipment(
+		req.user.userId,
+		req.body,
+	);
 
-  sendResponse(res, {
-    statusCode: httpStatus.CREATED,
-    success: true,
-    message: "Shipment created successfully",
-    data: result,
-  });
+	sendResponse(res, {
+		statusCode: httpStatus.CREATED,
+		success: true,
+		message: "Shipment created successfully",
+		data: result,
+	});
 });
 
 const getAllShipments = catchAsync(async (req: Request, res: Response) => {
-  const result = await ShipmentService.getAllShipments(req.query, req.user);
+	const result = await ShipmentService.getAllShipments(req.query, req.user);
 
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Shipments retrieved successfully",
-    meta: result.meta,
-    data: result.data,
-  });
+	sendResponse(res, {
+		statusCode: httpStatus.OK,
+		success: true,
+		message: "Shipments retrieved successfully",
+		meta: result.meta,
+		data: result.data,
+	});
 });
 
 const getShipmentSummary = catchAsync(async (req: Request, res: Response) => {
-  const result = await ShipmentService.getShipmentSummary(req.user);
-  sendResponse(res, { statusCode: httpStatus.OK, success: true, message: "Shipment summary retrieved", data: result });
+	const result = await ShipmentService.getShipmentSummary(req.user);
+	sendResponse(res, {
+		statusCode: httpStatus.OK,
+		success: true,
+		message: "Shipment summary retrieved",
+		data: result,
+	});
 });
 
 const getSingleShipment = catchAsync(async (req: Request, res: Response) => {
-  const result = await ShipmentService.getSingleShipment(req.params.id, req.user);
+	const result = await ShipmentService.getSingleShipment(
+		req.params.id,
+		req.user,
+	);
 
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Shipment retrieved successfully",
-    data: result,
-  });
+	sendResponse(res, {
+		statusCode: httpStatus.OK,
+		success: true,
+		message: "Shipment retrieved successfully",
+		data: result,
+	});
 });
 
 const trackShipment = catchAsync(async (req: Request, res: Response) => {
-  const result = await ShipmentService.trackShipment(req.params.trackingId);
-  sendResponse(res, { statusCode: httpStatus.OK, success: true, message: "Tracking retrieved successfully", data: result });
+	const result = await ShipmentService.trackShipment(req.params.trackingId);
+	sendResponse(res, {
+		statusCode: httpStatus.OK,
+		success: true,
+		message: "Tracking retrieved successfully",
+		data: result,
+	});
 });
 
 const assignCourier = catchAsync(async (req: Request, res: Response) => {
-  const result = await ShipmentService.assignCourier(req.params.id, req.body.courierId, req.user.userId);
+	const result = await ShipmentService.assignCourier(
+		req.params.id,
+		req.body.courierId,
+		req.user.userId,
+	);
 
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Courier assigned successfully",
-    data: result,
-  });
+	sendResponse(res, {
+		statusCode: httpStatus.OK,
+		success: true,
+		message: "Courier assigned successfully",
+		data: result,
+	});
 });
 
 const updateShipmentStatus = catchAsync(async (req: Request, res: Response) => {
-  const result = await ShipmentService.updateShipmentStatus(req.params.id, req.body.status, req.user.userId, req.user.role, req.body.hubId, req.body.note);
+	const result = await ShipmentService.updateShipmentStatus(
+		req.params.id,
+		req.body.status,
+		req.user.userId,
+		req.user.role,
+		req.body.hubId,
+		req.body.note,
+		req.body.proof,
+		req.body.collectedAmount,
+	);
 
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Shipment status updated successfully",
-    data: result,
-  });
+	sendResponse(res, {
+		statusCode: httpStatus.OK,
+		success: true,
+		message: "Shipment status updated successfully",
+		data: result,
+	});
 });
 
 const cancelShipment = catchAsync(async (req: Request, res: Response) => {
-  const result = await ShipmentService.cancelShipment(req.params.id, req.user.userId);
+	const result = await ShipmentService.cancelShipment(
+		req.params.id,
+		req.user.userId,
+	);
 
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Shipment cancelled successfully",
-    data: result,
-  });
+	sendResponse(res, {
+		statusCode: httpStatus.OK,
+		success: true,
+		message: "Shipment cancelled successfully",
+		data: result,
+	});
 });
 
 export const ShipmentController = {
-  getShipmentSummary,
-  trackShipment,
-  createShipment,
-  getAllShipments,
-  getSingleShipment,
-  assignCourier,
-  updateShipmentStatus,
-  cancelShipment,
+	getShipmentSummary,
+	trackShipment,
+	createShipment,
+	getAllShipments,
+	getSingleShipment,
+	assignCourier,
+	updateShipmentStatus,
+	cancelShipment,
 };

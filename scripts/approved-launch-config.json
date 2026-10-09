@@ -1,0 +1,118 @@
+{
+	"approvedOn": "2026-10-09",
+	"hubs": [
+		{
+			"key": "dhaka-north",
+			"name": "ঢাকা নর্থ হাব",
+			"location": "ঢাকা",
+			"address": "Dropzo ঢাকা নর্থ হাব, লাভ রোড, মিরপুর ২, ঢাকা-১২১৬।",
+			"areas": [
+				{
+					"name": "সাভার — দত্তপাড়া",
+					"district": "ঢাকা",
+					"upazila": "সাভার"
+				},
+				{
+					"name": "সাভার — বিরুলিয়া",
+					"district": "ঢাকা",
+					"upazila": "সাভার"
+				},
+				{
+					"name": "মিরপুর",
+					"district": "ঢাকা",
+					"upazila": "ঢাকা মহানগর"
+				},
+				{
+					"name": "উত্তরা",
+					"district": "ঢাকা",
+					"upazila": "ঢাকা মহানগর"
+				}
+			],
+			"pickupEnabled": true,
+			"dropoffEnabled": true,
+			"deliveryEnabled": true
+		},
+		{
+			"key": "bogura",
+			"name": "বগুড়া সদর হাব",
+			"location": "বগুড়া",
+			"address": "Dropzo বগুড়া সদর হাব, শেরপুর রোড (সাতমাথার কাছে), সদর, বগুড়া-৫৮০০।",
+			"areas": [
+				{
+					"name": "বগুড়া সদর",
+					"district": "বগুড়া",
+					"upazila": "বগুড়া সদর"
+				},
+				{
+					"name": "শিবগঞ্জ",
+					"district": "বগুড়া",
+					"upazila": "শিবগঞ্জ"
+				}
+			],
+			"pickupEnabled": false,
+			"dropoffEnabled": true,
+			"deliveryEnabled": true
+		},
+		{
+			"key": "dhaka-south",
+			"name": "ঢাকা সাউথ হাব",
+			"location": "ঢাকা",
+			"address": "Dropzo ঢাকা সাউথ হাব, রোড নং ২৭ (পুরাতন), ধানমন্ডি, ঢাকা-১২০৯।",
+			"areas": [
+				{
+					"name": "ধানমন্ডি",
+					"district": "ঢাকা",
+					"upazila": "ঢাকা মহানগর"
+				},
+				{
+					"name": "মোহাম্মদপুর",
+					"district": "ঢাকা",
+					"upazila": "ঢাকা মহানগর"
+				},
+				{
+					"name": "গুলশান",
+					"district": "ঢাকা",
+					"upazila": "ঢাকা মহানগর"
+				}
+			],
+			"pickupEnabled": true,
+			"dropoffEnabled": true,
+			"deliveryEnabled": true
+		}
+	],
+	"withinDhaka": {
+		"baseWeight": 1,
+		"baseCharge": 60,
+		"extraPerKg": 15,
+		"pickupFee": 0,
+		"codPercent": 1,
+		"services": [
+			{
+				"type": "STANDARD",
+				"days": 2
+			},
+			{
+				"type": "NEXT_DAY",
+				"days": 1
+			},
+			{
+				"type": "SAME_DAY",
+				"days": 0,
+				"cutoffMinutes": 720
+			}
+		]
+	},
+	"dhakaToBogura": {
+		"baseWeight": 1,
+		"baseCharge": 120,
+		"extraPerKg": 25,
+		"pickupFee": 10,
+		"codPercent": 1.5,
+		"services": [
+			{
+				"type": "STANDARD",
+				"days": 3
+			}
+		]
+	}
+}
