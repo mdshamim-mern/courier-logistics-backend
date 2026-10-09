@@ -9033,7 +9033,48 @@ try {
 		storageState: await merchant.client.storageState(),
 	});
 	const page = await customerBrowser.newPage();
-	await page.goto(frontend + "/bn/dashboard/shipments/" + paidParcel.id);
+	await page.goto(frontend + "/bn/dashboard/my-shipments/" + paidParcel.id);
+	await page.goto(frontend + "/bn/dashboard/new-shipment");
+	await page
+		.getByRole("combobox", {
+			name: "সংগ্রহের এলাকা (জেলা / উপজেলা / এলাকা)",
+			exact: true,
+		})
+		.selectOption(input.pickupAreaId);
+	await page
+		.getByRole("combobox", {
+			name: "প্রাপকের এলাকা (জেলা / উপজেলা / এলাকা)",
+			exact: true,
+		})
+		.selectOption(input.receiverAreaId);
+	for (const [name, value] of [
+		["senderPhone", "01712345678"],
+		["pickupAddress", "STAGING TEST ONLY Mirpur"],
+		["receiverName", "STAGING UI RECEIVER"],
+		["receiverPhone", "01712345678"],
+		["receiverAddress", "STAGING TEST ONLY Dhanmondi"],
+		["weight", "2"],
+		["declaredValue", "100"],
+		["codAmount", "0"],
+		[
+			"requestedPickupAt",
+			new Date(Date.now() + 86400000).toISOString().slice(0, 16),
+		],
+	])
+		await page.locator('input[name="' + name + '"]').fill(value);
+	await page.getByRole("button", { name: "বুকিংয়ের আগে মাশুল দেখুন" }).click();
+	await page.getByLabel("ঠিকানা, মাশুল ও পণ্যের তথ্য যাচাই করেছি।").check();
+	await page.getByRole("button", { name: "বুকিং নিশ্চিত করুন" }).click();
+	await page.waitForURL(/\/bn\/dashboard\/my-shipments\/[a-f0-9-]{36}/, {
+		timeout: 45000,
+	});
+	assert.equal(
+		(await page
+			.locator("svg[aria-label],img[aria-label],canvas[aria-label]")
+			.count()) > 0,
+		true,
+	);
+	result("public_bengali_booking_form_and_receipt");
 	const signature = await page.evaluate(() => {
 		const canvas = document.createElement("canvas");
 		canvas.width = 220;
@@ -9104,15 +9145,13 @@ try {
 	console.log(
 		JSON.stringify({
 			test: "stripe_checkout_fields",
-			fields: await page
-				.locator("input")
-				.evaluateAll((nodes) =>
-					nodes.map((n) => ({
-						name: n.name,
-						placeholder: n.placeholder,
-						type: n.type,
-					})),
-				),
+			fields: await page.locator("input").evaluateAll((nodes) =>
+				nodes.map((n) => ({
+					name: n.name,
+					placeholder: n.placeholder,
+					type: n.type,
+				})),
+			),
 		}),
 	);
 	await page.locator('input[name="cardNumber"]').fill("4242424242424242");
