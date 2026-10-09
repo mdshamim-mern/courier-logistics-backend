@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { listQuerySchema } from "../../utils/query";
 import httpStatus from "http-status";
 import { AppError } from "../../errors/AppError";
+import { lockHub } from "../../utils/rowLocks";
 
 const createHub = async (payload: { name: string; location: string; address: string }) => {
   const isExist = await prisma.hub.findUnique({
@@ -94,6 +95,11 @@ const updateHub = async (id: string, payload: Partial<{ name: string; location: 
     throw new AppError(httpStatus.NOT_FOUND, "Hub not found");
   }
 
+  if (payload.name && payload.name !== isExist.name) {
+    const duplicate = await prisma.hub.findUnique({ where: { name: payload.name } });
+    if (duplicate) throw new AppError(httpStatus.CONFLICT, "Hub with this name already exists");
+  }
+
   const result = await prisma.hub.update({
     where: { id },
     data: payload,
@@ -103,18 +109,22 @@ const updateHub = async (id: string, payload: Partial<{ name: string; location: 
 };
 
 const deleteHub = async (id: string) => {
-  const isExist = await prisma.hub.findUnique({ where: { id, isDeleted: false } });
-
-  if (!isExist) {
-    throw new AppError(httpStatus.NOT_FOUND, "Hub not found");
-  }
-
-  const result = await prisma.hub.update({
-    where: { id },
-    data: { isDeleted: true, deletedAt: new Date() },
+  return prisma.$transaction(async (tx) => {
+    await lockHub(tx, id);
+    const hub = await tx.hub.findUnique({ where: { id, isDeleted: false } });
+    if (!hub) throw new AppError(httpStatus.NOT_FOUND, "Hub not found");
+    const [areas, couriers, shipments, transfers, trackings] = await Promise.all([
+      tx.serviceArea.count({ where: { hubId: id } }),
+      tx.courier.count({ where: { currentHubId: id, isDeleted: false } }),
+      tx.shipment.count({ where: { isDeleted: false, OR: [{ originHubId: id }, { destinationHubId: id }] } }),
+      tx.shipmentTransfer.count({ where: { OR: [{ fromHubId: id }, { toHubId: id }] } }),
+      tx.shipmentTracking.count({ where: { hubId: id } }),
+    ]);
+    if (areas || couriers || shipments || transfers || trackings) {
+      throw new AppError(httpStatus.CONFLICT, "Hub is in use. Reassign its service areas, couriers and shipments before deletion.");
+    }
+    return tx.hub.update({ where: { id }, data: { isDeleted: true, deletedAt: new Date() } });
   });
-
-  return result;
 };
 
 export const HubService = {

@@ -8,8 +8,12 @@ import httpStatus from "http-status";
 import config from "../../config";
 import { AppError } from "../../errors/AppError";
 import type { ICourierCreate, ICourierFilterRequest, ICourierUpdate } from "./courier.interface";
+import { ACTIVE_SHIPMENT_STATUSES } from "../shipment/shipment.rules";
 
 const createCourier = async (payload: ICourierCreate) => {
+  if (payload.currentHubId && !(await prisma.hub.findUnique({ where: { id: payload.currentHubId, isDeleted: false } }))) {
+    throw new AppError(400, "Active hub not found");
+  }
   const isUserExists = await prisma.user.findUnique({
     where: { email: payload.email.toLowerCase() },
   });
@@ -144,6 +148,10 @@ const updateCourierProfile = async (id: string, input: ICourierUpdate, user: { u
   }
   if (payload.currentHubId && !(await prisma.hub.findUnique({ where: { id: payload.currentHubId, isDeleted: false } }))) {
     throw new AppError(400, "Active hub not found");
+  }
+  if (payload.currentHubId && payload.currentHubId !== courier.currentHubId) {
+    const activeWork = await prisma.shipment.count({ where: { courierId: courier.userId, isDeleted: false, status: { in: ACTIVE_SHIPMENT_STATUSES } } });
+    if (activeWork) throw new AppError(409, "Courier has active parcel assignments. Complete or hand over those parcels before changing the hub.");
   }
 
   const result = await prisma.courier.update({
