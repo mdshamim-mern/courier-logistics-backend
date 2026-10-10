@@ -4,7 +4,7 @@
     {
       "src": "src/server.ts",
       "use": "@vercel/node",
-      "config": { "includeFiles": ["docs/api-reference.md", "*.postman_collection.json", "*.postman_environment.json"] }
+      "config": { "includeFiles": ["docs/api-reference.md", "docs/postman-publishing.bn.md", "*.postman_collection.json", "*.postman_environment.json"] }
     }
   ],
   "routes": [

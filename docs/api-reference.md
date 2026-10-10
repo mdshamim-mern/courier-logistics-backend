@@ -9,9 +9,12 @@ Updated for the assignment completion release on 10 October 2026. This is source
 - Server: https://courier-logistics-backend-lake.vercel.app
 - API: https://courier-logistics-backend-lake.vercel.app/api/v1
 - Frontend: https://courier-frontend-sigma.vercel.app
-- Public readable reference: https://courier-logistics-backend-lake.vercel.app/docs (not a Swagger UI).
+- Public Postman-style reference: https://courier-logistics-backend-lake.vercel.app/docs (read-only; not a Postman-hosted publication or Swagger UI).
 - Downloads: `/docs/postman/collection` and `/docs/postman/environment` on the server host.
 - The collection covers all 58 unique versioned endpoints plus root/liveness/readiness (61 unique endpoints).
+- Includes 131 sanitized illustrative success/error responses, request-level contract assertions and existing quote/booking variable capture. Examples show representative fields, not recorded live transaction evidence.
+- Earlier publication: https://documenter.getpostman.com/view/56161283/2sBYB1P8Wz. The supplied cleaned export contains 37 requests and no saved response examples; it is historical and does not include current operations/Stripe endpoints.
+- Bangla import/publication instructions: https://courier-logistics-backend-lake.vercel.app/docs/postman/publishing. Importing a new collection does not automatically replace an earlier Documenter publication.
 
 ## Import and authentication
 
@@ -44,7 +47,7 @@ Paths below are relative to /api/v1 except /, /health/live and /health/ready. `:
 | GET | `/` | Public | API root |
 | GET | `/health/live` | Public | Liveness |
 | GET | `/health/ready` | Public | Database and Redis readiness |
-| POST | `/auth/login` | Public | courier login |
+| POST | `/auth/login` | Public | Sign in with the selected account role |
 | POST | `/auth/register` | Public | Register customer and send email OTP |
 | POST | `/auth/verify-email` | Public | Verify registration email |
 | POST | `/auth/google` | Public | Google identity login |
@@ -78,7 +81,7 @@ Paths below are relative to /api/v1 except /, /health/live and /health/ready. `:
 | POST | `/shipments/bulk` | CUSTOMER | Create 1-100 bookings atomically |
 | GET | `/shipments` | ADMIN / CUSTOMER / COURIER | List scoped shipments |
 | GET | `/shipments/summary` | ADMIN / CUSTOMER / COURIER | Full scoped shipment totals |
-| GET | `/shipments/track/:id` | Public | Public status-only tracking |
+| GET | `/shipments/track/:trackingId` | Public | Public status-only tracking |
 | GET | `/shipments/:id` | ADMIN / owning CUSTOMER / assigned COURIER | Shipment detail, proof and printable-label data |
 | PATCH | `/shipments/:id/assign` | ADMIN | Assign first pickup worker |
 | PATCH | `/shipments/:id/handoff` | ADMIN | Hand over to destination-hub worker |
@@ -156,4 +159,17 @@ bKash sandbox wallet/provider availability can block evaluation. bKash does not 
 
 Endpoint coverage was checked against every route module and the top-level Stripe webhook. JSON parses, request scripts compile, and default mutation/callback guards were tested without sending writes. Publishing documentation does not seed data, approve merchants or perform physical dispatch. Any browser checkout evidence is recorded separately.
 
-The backend verification suite now contains 59 passing tests, including public documentation/download checks and chart aggregation. The six-month revenue SQL was also verified with a read-only query against the configured database. Browser regressions use test fixtures; they are not proof of live payment settlement. Check GitHub CI for the published commit and the frontend release checklist for current browser results.
+The backend verification suite contains 63 passing tests after this documentation update, including complete route coverage, example/script contracts, safe guards, public documentation/download checks and chart aggregation. Type checking, lint and production build also pass. The earlier six-month revenue SQL check used a read-only query against the configured database. Browser regressions use test fixtures; they are not proof of live payment settlement. Check GitHub CI for the published commit and the frontend release checklist for current browser results.
+
+## How to interpret verification evidence
+
+| Evidence | What it demonstrates | What it does not demonstrate |
+|---|---|---|
+| Route inventory regression | Every current route appears in the 67-request collection | Every route was executed against live records |
+| Postman script/example regression | Scripts compile, assertions accept documented positive examples, default write/callback guards work | A saved example is a live capture |
+| Backend automated tests | Session, validation, pricing, ownership, state/payment safeguards under controlled tests | Physical delivery or real-money settlement |
+| Historical live three-role login/read/logout smoke | Dedicated accounts authenticated and authorized reads worked at that time | Live write coverage or a current provider checkout |
+| Frontend CI: 134 browser tests | UI behavior using loopback/intercepted fixtures; run https://github.com/mdshamim-mern/courier-frontend/actions/runs/38058462505 | Live Stripe/bKash payment success |
+| Provider checkout/reconciliation evidence | Only a separately verified provider test transaction proves its payment state | Commercial delivery, recipient identity or automatic COD payout |
+
+Request assertions target successful authorized inputs. Missing variables, expired sessions, inactive coverage, stale quotes or invalid transitions correctly fail those assertions. Fix prerequisites rather than treating an arbitrary HTTP response as a passing test. Do not run the entire mixed-role collection with writes enabled.
