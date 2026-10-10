@@ -5,6 +5,7 @@ import helmet from "helmet";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import config from "./config";
+import { registerDocumentation } from "./documentation";
 import { csrfProtection } from "./middlewares/csrf";
 import globalErrorHandler from "./middlewares/globalErrorHandler";
 import notFound from "./middlewares/notFound";
@@ -27,6 +28,7 @@ app.use((req, res, next) => {
   next();
 });
 app.use(cors({ origin: new URL(config.frontend_url).origin, credentials: true, allowedHeaders: ["Content-Type", "Authorization", "X-Courier-Client"], exposedHeaders: ["X-Request-ID"] }));
+registerDocumentation(app);
 
 app.get("/health/live", (req, res) => res.status(200).json({ status: "ok" }));
 app.get("/health/ready", async (req, res) => {

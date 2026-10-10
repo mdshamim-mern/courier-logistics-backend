@@ -69,12 +69,27 @@ const getDashboardStats = async () => {
 	const totalRevenue = revenueResult._sum.amount
 		? Number(revenueResult._sum.amount)
 		: 0;
+	const monthlyRevenue = await prisma.$queryRaw<Array<{ month: string; amount: number }>>`
+		WITH months AS (
+			SELECT generate_series(
+				date_trunc('month', NOW() AT TIME ZONE 'Asia/Dhaka') - INTERVAL '5 months',
+				date_trunc('month', NOW() AT TIME ZONE 'Asia/Dhaka'), INTERVAL '1 month'
+			) AS month
+		)
+		SELECT to_char(m.month, 'YYYY-MM') AS month,
+			COALESCE(SUM(p.amount), 0)::double precision AS amount
+		FROM months m LEFT JOIN "payments" p
+			ON date_trunc('month', p."paidAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Dhaka') = m.month
+			AND p.status = 'PAID' AND p."isDeleted" = false
+		GROUP BY m.month ORDER BY m.month
+	`;
 
 	return {
 		totalCustomers,
 		totalCouriers,
 		totalShipments,
 		totalRevenue,
+		monthlyRevenue,
 		shipmentsByStatus,
 	};
 };

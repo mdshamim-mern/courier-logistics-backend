@@ -1,0 +1,2004 @@
+{
+  "info": {
+    "name": "Dropzo Courier & Logistics - Updated API (2026-10-10)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Source-aligned with backend f3a1a4c and frontend 3972568. Login uses HttpOnly cookies, not JSON accessToken. Postman stores Set-Cookie. Log out before role switching. Default environment blocks resource mutations and provider callbacks. Never Run All with write flags enabled. Read docs/api-reference.md. No session cookies, API keys, personal passwords or payment secrets are included."
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const path = pm.request.url.toString().split(\"?\")[0];",
+          "const method = pm.request.method;",
+          "const provider = path.includes(\"/callback\") || path.endsWith(\"/webhook\");",
+          "const safePost = [\"/auth/login\", \"/auth/refresh-token\", \"/auth/logout\", \"/operations/quote\", \"/operations/quotes\"].some(x => path.endsWith(x));",
+          "const mutation = ![\"GET\", \"HEAD\", \"OPTIONS\"].includes(method) && !safePost;",
+          "if ((provider && pm.environment.get(\"allow_provider_callbacks\") !== \"true\") || (mutation && pm.environment.get(\"allow_mutations\") !== \"true\")) {",
+          "  pm.execution.skipRequest();",
+          "}",
+          "if ((path.endsWith(\"/operations/quote\") || path.endsWith(\"/operations/quotes\") || path.endsWith(\"/shipments\") || path.endsWith(\"/shipments/bulk\")) && !pm.environment.get(\"pickup_at\")) {",
+          "  pm.environment.set(\"pickup_at\", new Date(Date.now() + 86400000).toISOString());",
+          "}",
+          "if ((path.endsWith(\"/shipments\") || path.endsWith(\"/shipments/bulk\")) && !pm.environment.get(\"booking_request_id\")) {",
+          "  pm.environment.set(\"booking_request_id\", pm.variables.replaceIn(\"{{$guid}}\"));",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "API root",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{server_url}}/",
+            "description": "Access: Public. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Liveness",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{server_url}}/health/live",
+            "description": "Access: Public. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Database and Redis readiness",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{server_url}}/health/ready",
+            "description": "Access: Public. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "admin login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/auth/login",
+            "description": "Access: Public. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "customer login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/auth/login",
+            "description": "Access: Public. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customer_email}}\",\n  \"password\": \"{{customer_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "courier login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/auth/login",
+            "description": "Access: Public. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{courier_email}}\",\n  \"password\": \"{{courier_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register customer and send email OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/auth/register",
+            "description": "Access: Public. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Evaluation Customer\",\n  \"email\": \"{{registration_email}}\",\n  \"password\": \"{{registration_password}}\",\n  \"contactNumber\": \"01700000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify registration email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/auth/verify-email",
+            "description": "Access: Public. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{registration_email}}\",\n  \"otp\": \"{{email_otp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Google identity login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/auth/google",
+            "description": "Access: Public. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idToken\": \"{{google_id_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh cookie session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/auth/refresh-token",
+            "description": "Access: Refresh cookie. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Request password reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/auth/forgot-password",
+            "description": "Access: Public. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{registration_email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Complete password reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/auth/reset-password",
+            "description": "Access: Public. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{registration_email}}\",\n  \"otp\": \"{{email_otp}}\",\n  \"newPassword\": \"{{registration_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout current session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/auth/logout",
+            "description": "Access: Current session. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Current account and profiles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/users/me",
+            "description": "Access: ADMIN / CUSTOMER / COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Update own profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/users/me",
+            "description": "Access: ADMIN / CUSTOMER / COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Evaluation Account\",\n  \"contactNumber\": \"01700000000\",\n  \"address\": \"Test address, Mirpur, Dhaka\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload own avatar",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/users/profile-image",
+            "description": "Access: ADMIN / CUSTOMER / COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "profileImage",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Coverage and pricing",
+      "item": [
+        {
+          "name": "List approved service areas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/operations/coverage",
+            "description": "Access: Public. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Quote one parcel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/operations/quote",
+            "description": "Access: Public. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pickupAreaId\": \"{{pickup_area_id}}\",\n  \"receiverAreaId\": \"{{receiver_area_id}}\",\n  \"weight\": {{weight}},\n  \"codAmount\": {{cod_amount}},\n  \"serviceType\": \"NEXT_DAY\",\n  \"pickupMode\": \"HOME\",\n  \"requestedPickupAt\": \"{{pickup_at}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const q = pm.response.json().data;",
+                  "  pm.environment.set(\"quote_version\", q.rateUpdatedAt);",
+                  "  pm.environment.set(\"quoted_delivery_charge\", String(q.deliveryCharge));",
+                  "  pm.environment.set(\"quoted_cod_fee\", String(q.codFee));",
+                  "  pm.environment.set(\"quoted_service_type\", q.serviceType);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quote 1-100 parcels",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/operations/quotes",
+            "description": "Access: CUSTOMER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"pickupAreaId\": \"{{pickup_area_id}}\",\n    \"receiverAreaId\": \"{{receiver_area_id}}\",\n    \"weight\": {{weight}},\n    \"codAmount\": {{cod_amount}},\n    \"serviceType\": \"NEXT_DAY\",\n    \"pickupMode\": \"HOME\",\n    \"requestedPickupAt\": \"{{pickup_at}}\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Business and worker applications",
+      "item": [
+        {
+          "name": "Own operations and COD ledger",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/operations/mine",
+            "description": "Access: CUSTOMER / COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Submit or update merchant business",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/operations/business",
+            "description": "Access: CUSTOMER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shopName\": \"Evaluation Shop\",\n  \"pickupAddress\": \"Test shop address, Dhanmondi, Dhaka\",\n  \"contactNumber\": \"01700000000\",\n  \"payoutMethod\": \"BKASH\",\n  \"accountName\": \"Evaluation Merchant\",\n  \"accountNumber\": \"01700000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit worker application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/operations/applications",
+            "description": "Access: CUSTOMER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactNumber\": \"01700000000\",\n  \"area\": \"Mirpur\",\n  \"vehicleType\": \"BICYCLE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Operations administration",
+      "item": [
+        {
+          "name": "Configuration, reviews and cash records",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/operations/admin",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Create service area",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/operations/areas",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Evaluation Area\",\n  \"district\": \"Dhaka\",\n  \"upazila\": \"Dhaka Metropolitan\",\n  \"hubId\": \"{{hub_id}}\",\n  \"pickupEnabled\": false,\n  \"dropoffEnabled\": false,\n  \"deliveryEnabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update service area",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/operations/areas/{{area_id}}",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Evaluation Area\",\n  \"district\": \"Dhaka\",\n  \"upazila\": \"Dhaka Metropolitan\",\n  \"hubId\": \"{{hub_id}}\",\n  \"pickupEnabled\": false,\n  \"dropoffEnabled\": false,\n  \"deliveryEnabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create approved tariff",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/operations/rates",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pickupAreaId\": \"{{pickup_area_id}}\",\n  \"receiverAreaId\": \"{{receiver_area_id}}\",\n  \"serviceType\": \"NEXT_DAY\",\n  \"baseWeight\": 1,\n  \"baseCharge\": 60,\n  \"extraPerKg\": 15,\n  \"pickupFee\": 0,\n  \"codPercent\": 1,\n  \"deliveryDays\": 1,\n  \"cutoffMinutes\": null,\n  \"active\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update approved tariff",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/operations/rates/{{rate_id}}",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pickupAreaId\": \"{{pickup_area_id}}\",\n  \"receiverAreaId\": \"{{receiver_area_id}}\",\n  \"serviceType\": \"NEXT_DAY\",\n  \"baseWeight\": 1,\n  \"baseCharge\": 60,\n  \"extraPerKg\": 15,\n  \"pickupFee\": 0,\n  \"codPercent\": 1,\n  \"deliveryDays\": 1,\n  \"cutoffMinutes\": null,\n  \"active\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Review merchant business",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/operations/business/{{business_id}}/review",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approved\": true,\n  \"note\": \"Identity and payout details verified.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Review worker application",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/operations/applications/{{application_id}}/review",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approved\": true,\n  \"hubId\": \"{{hub_id}}\",\n  \"note\": \"Worker identity, service area and hub verified.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Record cash already received",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/operations/collections/{{collection_id}}",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"RECEIVE\",\n  \"reference\": \"{{cash_receipt_reference}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Record merchant transfer already completed",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/operations/collections/{{collection_id}}",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"PAY\",\n  \"reference\": \"{{payout_reference}}\",\n  \"accountVersion\": \"{{account_version}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Hubs",
+      "item": [
+        {
+          "name": "List active hubs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/hubs?page=1&limit=10&sortBy=createdAt&sortOrder=desc",
+            "description": "Access: ADMIN / CUSTOMER / COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Hub detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/hubs/{{hub_id}}",
+            "description": "Access: ADMIN / CUSTOMER / COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Create hub",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/hubs",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Evaluation Hub\",\n  \"location\": \"Dhaka\",\n  \"address\": \"Evaluation-only branch address, Dhaka\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update hub",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/hubs/{{hub_id}}",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Evaluation Hub\",\n  \"location\": \"Dhaka\",\n  \"address\": \"Updated evaluation-only branch address, Dhaka\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Soft archive unused hub",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/hubs/{{hub_id}}",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Shipments",
+      "item": [
+        {
+          "name": "Create booking from reviewed quote",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/shipments",
+            "description": "Access: ADMIN / CUSTOMER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pickupAreaId\": \"{{pickup_area_id}}\",\n  \"receiverAreaId\": \"{{receiver_area_id}}\",\n  \"weight\": {{weight}},\n  \"codAmount\": {{cod_amount}},\n  \"serviceType\": \"NEXT_DAY\",\n  \"pickupMode\": \"HOME\",\n  \"requestedPickupAt\": \"{{pickup_at}}\",\n  \"requestId\": \"{{booking_request_id}}\",\n  \"quotedServiceType\": \"{{quoted_service_type}}\",\n  \"quoteVersion\": \"{{quote_version}}\",\n  \"quotedDeliveryCharge\": {{quoted_delivery_charge}},\n  \"quotedCodFee\": {{quoted_cod_fee}},\n  \"receiverName\": \"Test Receiver\",\n  \"receiverPhone\": \"01700112233\",\n  \"receiverAddress\": \"Mirpur 10, Circle, Dhaka-1216.\",\n  \"senderPhone\": \"01700000000\",\n  \"pickupAddress\": \"Road 27, Dhanmondi, Dhaka-1209.\",\n  \"productType\": \"PARCEL\",\n  \"declaredValue\": {{declared_value}},\n  \"deliveryInstructions\": \"Evaluation test record; do not dispatch physically.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const s = pm.response.json().data;",
+                  "  pm.environment.set(\"shipment_id\", s.id);",
+                  "  pm.environment.set(\"tracking_id\", s.trackingId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create 1-100 bookings atomically",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/shipments/bulk",
+            "description": "Access: CUSTOMER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"pickupAreaId\": \"{{pickup_area_id}}\",\n    \"receiverAreaId\": \"{{receiver_area_id}}\",\n    \"weight\": {{weight}},\n    \"codAmount\": {{cod_amount}},\n    \"serviceType\": \"NEXT_DAY\",\n    \"pickupMode\": \"HOME\",\n    \"requestedPickupAt\": \"{{pickup_at}}\",\n    \"requestId\": \"{{booking_request_id}}\",\n    \"quotedServiceType\": \"{{quoted_service_type}}\",\n    \"quoteVersion\": \"{{quote_version}}\",\n    \"quotedDeliveryCharge\": {{quoted_delivery_charge}},\n    \"quotedCodFee\": {{quoted_cod_fee}},\n    \"receiverName\": \"Test Receiver\",\n    \"receiverPhone\": \"01700112233\",\n    \"receiverAddress\": \"Mirpur 10, Circle, Dhaka-1216.\",\n    \"senderPhone\": \"01700000000\",\n    \"pickupAddress\": \"Road 27, Dhanmondi, Dhaka-1209.\",\n    \"productType\": \"PARCEL\",\n    \"declaredValue\": {{declared_value}},\n    \"deliveryInstructions\": \"Evaluation test record; do not dispatch physically.\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List scoped shipments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/shipments?page=1&limit=10&sortBy=createdAt&sortOrder=desc",
+            "description": "Access: ADMIN / CUSTOMER / COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Full scoped shipment totals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/shipments/summary",
+            "description": "Access: ADMIN / CUSTOMER / COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Public status-only tracking",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/shipments/track/{{tracking_id}}",
+            "description": "Access: Public. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Shipment detail, proof and printable-label data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}",
+            "description": "Access: ADMIN / owning CUSTOMER / assigned COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Assign first pickup worker",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}/assign",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courierId\": \"{{courier_user_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Hand over to destination-hub worker",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}/handoff",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courierId\": \"{{courier_user_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update next allowed shipment status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}/status",
+            "description": "Access: ADMIN / assigned COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PICKED_UP\",\n  \"note\": \"Parcel physically collected.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Record hub arrival",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}/status",
+            "description": "Access: ADMIN / assigned COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"AT_ORIGIN_HUB\",\n  \"hubId\": \"{{hub_id}}\",\n  \"note\": \"Arrival verified at origin hub.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Record failed delivery",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}/status",
+            "description": "Access: ADMIN / assigned COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"DELIVERY_FAILED\",\n  \"note\": \"Recipient unavailable; contact attempts recorded.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Recipient-acknowledged delivery and product cash",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}/status",
+            "description": "Access: ADMIN / assigned COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"DELIVERED\",\n  \"collectedAmount\": {{cod_amount}},\n  \"proof\": {\n    \"receiverName\": \"Test Receiver\",\n    \"signature\": \"{{recipient_signature_png}}\",\n    \"acknowledged\": true\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel own eligible parcel",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}/cancel",
+            "description": "Access: owning CUSTOMER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Couriers",
+      "item": [
+        {
+          "name": "List couriers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/couriers?page=1&limit=10&sortBy=createdAt&sortOrder=desc",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Create verified courier account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/couriers",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Evaluation Courier\",\n  \"email\": \"{{new_courier_email}}\",\n  \"password\": \"{{new_courier_password}}\",\n  \"contactNumber\": \"01700000000\",\n  \"vehicleType\": \"Bicycle\",\n  \"vehicleNumber\": \"TEST-VEHICLE\",\n  \"currentHubId\": \"{{hub_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Courier profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/couriers/{{courier_id}}",
+            "description": "Access: ADMIN / own COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Update courier and availability",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/couriers/{{courier_id}}",
+            "description": "Access: ADMIN / own COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleType\": \"Bicycle\",\n  \"vehicleNumber\": \"TEST-VEHICLE\",\n  \"isAvailable\": true,\n  \"currentHubId\": \"{{hub_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Actual history and configured earnings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/couriers/{{courier_id}}/history-earnings",
+            "description": "Access: ADMIN / own COURIER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Stripe test checkout for delivery fee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/payments/stripe/initiate",
+            "description": "Access: owning CUSTOMER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentId\": \"{{shipment_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "bKash sandbox checkout for delivery fee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/payments/initiate",
+            "description": "Access: owning CUSTOMER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentId\": \"{{shipment_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reconcile provider-verified payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/payments/reconcile",
+            "description": "Access: owning CUSTOMER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentId\": \"{{shipment_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Payment history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/payments?page=1&limit=10",
+            "description": "Access: ADMIN / owning CUSTOMER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Payment detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/payments/{{payment_id}}",
+            "description": "Access: ADMIN / owning CUSTOMER. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Provider callbacks - reference only",
+      "item": [
+        {
+          "name": "Stripe success redirect verification",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/payments/stripe/callback?session_id={{stripe_session_id}}",
+            "description": "Access: Provider redirect. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "bKash result redirect",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/payments/bkash/callback?paymentID={{bkash_payment_id}}&status=success",
+            "description": "Access: Provider redirect. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Stripe signed raw-body webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Stripe-Signature",
+                "value": "{{stripe_signature}}",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/payments/stripe/webhook",
+            "description": "Access: Valid Stripe signature. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{{stripe_event_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin and audit",
+      "item": [
+        {
+          "name": "Live dashboard statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/admin/dashboard-stats",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "List accounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/admin/users?page=1&limit=10&sortBy=createdAt&sortOrder=desc",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        },
+        {
+          "name": "Update account status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/admin/users/{{user_id}}/status",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update account role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/admin/users/{{user_id}}/role",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"CUSTOMER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Paginated raw audit events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Courier-Client",
+                "value": "1",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/audit-logs?page=1&limit=10",
+            "description": "Access: ADMIN. Uses the current cookie session. Writes require allow_mutations=true; provider callbacks also require allow_provider_callbacks=true. Use only approved evaluation records."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
