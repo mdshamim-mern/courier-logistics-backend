@@ -1857,7 +1857,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Upload own avatar successful\",\n  \"data\": {\n    \"id\": \"00000000-0000-4000-8000-000000000001\",\n    \"name\": \"Evaluation Account\",\n    \"email\": \"evaluation@example.com\",\n    \"role\": \"CUSTOMER\",\n    \"status\": \"ACTIVE\",\n    \"emailVerified\": true\n  }\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Upload own avatar successful\",\n  \"data\": {\n    \"id\": \"00000000-0000-4000-8000-000000000001\",\n    \"name\": \"Evaluation Account\",\n    \"email\": \"evaluation@example.com\",\n    \"role\": \"CUSTOMER\",\n    \"imageUrl\": \"https://example.com/illustrative-avatar.png\"\n  }\n}"
             },
             {
               "name": "Illustrative 401 — error envelope",
@@ -6102,7 +6102,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Create verified courier account successful\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"00000000-0000-4000-8000-000000000001\",\n      \"name\": \"Evaluation Account\",\n      \"email\": \"evaluation@example.com\",\n      \"role\": \"COURIER\",\n      \"status\": \"ACTIVE\",\n      \"emailVerified\": true\n    },\n    \"courier\": {\n      \"id\": \"00000000-0000-4000-8000-000000000001\",\n      \"userId\": \"00000000-0000-4000-8000-000000000002\",\n      \"isAvailable\": true,\n      \"currentHubId\": \"00000000-0000-4000-8000-000000000001\",\n      \"vehicleType\": \"Bicycle\",\n      \"user\": {\n        \"id\": \"00000000-0000-4000-8000-000000000002\",\n        \"name\": \"Evaluation Account\",\n        \"email\": \"evaluation@example.com\",\n        \"role\": \"COURIER\",\n        \"status\": \"ACTIVE\",\n        \"emailVerified\": true\n      },\n      \"hub\": {\n        \"id\": \"00000000-0000-4000-8000-000000000001\",\n        \"name\": \"Illustrative Hub\",\n        \"location\": \"Dhaka\",\n        \"address\": \"Illustrative branch address\",\n        \"isDeleted\": false\n      }\n    }\n  }\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Create verified courier account successful\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"00000000-0000-4000-8000-000000000001\",\n      \"name\": \"Evaluation Account\",\n      \"email\": \"evaluation@example.com\",\n      \"role\": \"COURIER\",\n      \"status\": \"ACTIVE\",\n      \"emailVerified\": true\n    },\n    \"courier\": {\n      \"id\": \"00000000-0000-4000-8000-000000000001\",\n      \"userId\": \"00000000-0000-4000-8000-000000000002\",\n      \"isAvailable\": true,\n      \"currentHubId\": \"00000000-0000-4000-8000-000000000001\",\n      \"vehicleType\": \"Bicycle\"\n    }\n  }\n}"
             },
             {
               "name": "Illustrative 401 — error envelope",
@@ -7122,7 +7122,7 @@
               "body": ""
             },
             {
-              "name": "Illustrative 401 — error envelope",
+              "name": "Illustrative 400 — invalid callback input",
               "originalRequest": {
                 "method": "GET",
                 "header": [
@@ -7138,8 +7138,8 @@
                 "url": "{{base_url}}/payments/stripe/callback?session_id={{stripe_session_id}}",
                 "description": "## Stripe success redirect verification\n\nAccess: Provider redirect.\n\nReference only; use real provider session/payment IDs and a real Stripe-signed raw body. Redirect following is disabled so 302 can be inspected. Do not replay these to fake payment.\n\n\n\n\n\n### Examples and tests\nSanitized illustrative response examples show selected contract fields, not live captures. Tests expect successful, authorized input and eligible resource state. Missing variables, cookies or workflow prerequisites intentionally fail assertions. Default flags skip writes and provider callbacks."
               },
-              "status": "Unauthorized",
-              "code": 401,
+              "status": "Bad Request",
+              "code": 400,
               "_postman_previewlanguage": "json",
               "header": [
                 {
@@ -7148,7 +7148,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized\",\n  \"errors\": [\n    {\n      \"path\": \"\",\n      \"message\": \"Unauthorized\"\n    }\n  ]\n}"
+              "body": "{\n  \"success\": false,\n  \"message\": \"Validation failed\",\n  \"errors\": [\n    {\n      \"path\": \"query\",\n      \"message\": \"Invalid callback parameters\"\n    }\n  ]\n}"
             }
           ],
           "protocolProfileBehavior": {
@@ -7215,7 +7215,7 @@
               "body": ""
             },
             {
-              "name": "Illustrative 401 — error envelope",
+              "name": "Illustrative 400 — invalid callback input",
               "originalRequest": {
                 "method": "GET",
                 "header": [
@@ -7231,8 +7231,8 @@
                 "url": "{{base_url}}/payments/bkash/callback?paymentID={{bkash_payment_id}}&status=success",
                 "description": "## bKash result redirect\n\nAccess: Provider redirect.\n\nReference only; use real provider session/payment IDs and a real Stripe-signed raw body. Redirect following is disabled so 302 can be inspected. Do not replay these to fake payment.\n\n\n\n\n\n### Examples and tests\nSanitized illustrative response examples show selected contract fields, not live captures. Tests expect successful, authorized input and eligible resource state. Missing variables, cookies or workflow prerequisites intentionally fail assertions. Default flags skip writes and provider callbacks."
               },
-              "status": "Unauthorized",
-              "code": 401,
+              "status": "Bad Request",
+              "code": 400,
               "_postman_previewlanguage": "json",
               "header": [
                 {
@@ -7241,7 +7241,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized\",\n  \"errors\": [\n    {\n      \"path\": \"\",\n      \"message\": \"Unauthorized\"\n    }\n  ]\n}"
+              "body": "{\n  \"success\": false,\n  \"message\": \"Validation failed\",\n  \"errors\": [\n    {\n      \"path\": \"query\",\n      \"message\": \"Invalid callback parameters\"\n    }\n  ]\n}"
             }
           ],
           "protocolProfileBehavior": {
@@ -7617,7 +7617,7 @@
               "type": "noauth"
             },
             "url": "{{base_url}}/admin/users/{{user_id}}/status",
-            "description": "## Update account status\n\nAccess: ADMIN.\n\nDatabase-backed administrator data. Revenue counts PAID delivery-fee payments, not COD. Test/demo records may affect totals.\n\nUse allowedNextStatuses. Hub arrival requires correct hubId, failure/return a reason, DELIVERED genuine PNG acknowledgment and exact COD collected amount.\n\nResolve {{variables}} before sending; numeric values must not be quoted. \n\n### Examples and tests\nSanitized illustrative response examples show selected contract fields, not live captures. Tests expect successful, authorized input and eligible resource state. Missing variables, cookies or workflow prerequisites intentionally fail assertions. Default flags skip writes and provider callbacks.",
+            "description": "## Update account status\n\nAccess: ADMIN.\n\nDatabase-backed administrator data. Revenue counts PAID delivery-fee payments, not COD. Test/demo records may affect totals.\n\nStatus must be ACTIVE, BLOCKED or INACTIVE. Account eligibility and administrator safeguards apply.\n\nResolve {{variables}} before sending; numeric values must not be quoted. \n\n### Examples and tests\nSanitized illustrative response examples show selected contract fields, not live captures. Tests expect successful, authorized input and eligible resource state. Missing variables, cookies or workflow prerequisites intentionally fail assertions. Default flags skip writes and provider callbacks.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"status\": \"ACTIVE\"\n}",
@@ -7649,7 +7649,7 @@
                   "type": "noauth"
                 },
                 "url": "{{base_url}}/admin/users/{{user_id}}/status",
-                "description": "## Update account status\n\nAccess: ADMIN.\n\nDatabase-backed administrator data. Revenue counts PAID delivery-fee payments, not COD. Test/demo records may affect totals.\n\nUse allowedNextStatuses. Hub arrival requires correct hubId, failure/return a reason, DELIVERED genuine PNG acknowledgment and exact COD collected amount.\n\nResolve {{variables}} before sending; numeric values must not be quoted. \n\n### Examples and tests\nSanitized illustrative response examples show selected contract fields, not live captures. Tests expect successful, authorized input and eligible resource state. Missing variables, cookies or workflow prerequisites intentionally fail assertions. Default flags skip writes and provider callbacks.",
+                "description": "## Update account status\n\nAccess: ADMIN.\n\nDatabase-backed administrator data. Revenue counts PAID delivery-fee payments, not COD. Test/demo records may affect totals.\n\nStatus must be ACTIVE, BLOCKED or INACTIVE. Account eligibility and administrator safeguards apply.\n\nResolve {{variables}} before sending; numeric values must not be quoted. \n\n### Examples and tests\nSanitized illustrative response examples show selected contract fields, not live captures. Tests expect successful, authorized input and eligible resource state. Missing variables, cookies or workflow prerequisites intentionally fail assertions. Default flags skip writes and provider callbacks.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"status\": \"ACTIVE\"\n}",
@@ -7692,7 +7692,7 @@
                   "type": "noauth"
                 },
                 "url": "{{base_url}}/admin/users/{{user_id}}/status",
-                "description": "## Update account status\n\nAccess: ADMIN.\n\nDatabase-backed administrator data. Revenue counts PAID delivery-fee payments, not COD. Test/demo records may affect totals.\n\nUse allowedNextStatuses. Hub arrival requires correct hubId, failure/return a reason, DELIVERED genuine PNG acknowledgment and exact COD collected amount.\n\nResolve {{variables}} before sending; numeric values must not be quoted. \n\n### Examples and tests\nSanitized illustrative response examples show selected contract fields, not live captures. Tests expect successful, authorized input and eligible resource state. Missing variables, cookies or workflow prerequisites intentionally fail assertions. Default flags skip writes and provider callbacks.",
+                "description": "## Update account status\n\nAccess: ADMIN.\n\nDatabase-backed administrator data. Revenue counts PAID delivery-fee payments, not COD. Test/demo records may affect totals.\n\nStatus must be ACTIVE, BLOCKED or INACTIVE. Account eligibility and administrator safeguards apply.\n\nResolve {{variables}} before sending; numeric values must not be quoted. \n\n### Examples and tests\nSanitized illustrative response examples show selected contract fields, not live captures. Tests expect successful, authorized input and eligible resource state. Missing variables, cookies or workflow prerequisites intentionally fail assertions. Default flags skip writes and provider callbacks.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"status\": \"ACTIVE\"\n}",
