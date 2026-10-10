@@ -7617,7 +7617,7 @@
               "type": "noauth"
             },
             "url": "{{base_url}}/admin/users/{{user_id}}/status",
-            "description": "## Update account status\n\nAccess: ADMIN.\n\nDatabase-backed administrator data. Revenue counts PAID delivery-fee payments, not COD. Test/demo records may affect totals.\n\nStatus must be ACTIVE, BLOCKED or INACTIVE. Account eligibility and administrator safeguards apply.\n\nResolve {{variables}} before sending; numeric values must not be quoted. \n\n### Examples and tests\nSanitized illustrative response examples show selected contract fields, not live captures. Tests expect successful, authorized input and eligible resource state. Missing variables, cookies or workflow prerequisites intentionally fail assertions. Default flags skip writes and provider callbacks.",
+            "description": "## Update account status\n\nAccess: ADMIN.\n\nDatabase-backed administrator data. Revenue counts PAID delivery-fee payments, not COD. Test/demo records may affect totals.\n\nStatus must be ACTIVE, BLOCKED or DELETED. Account eligibility and administrator safeguards apply.\n\nResolve {{variables}} before sending; numeric values must not be quoted. \n\n### Examples and tests\nSanitized illustrative response examples show selected contract fields, not live captures. Tests expect successful, authorized input and eligible resource state. Missing variables, cookies or workflow prerequisites intentionally fail assertions. Default flags skip writes and provider callbacks.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"status\": \"ACTIVE\"\n}",
@@ -7649,7 +7649,7 @@
                   "type": "noauth"
                 },
                 "url": "{{base_url}}/admin/users/{{user_id}}/status",
-                "description": "## Update account status\n\nAccess: ADMIN.\n\nDatabase-backed administrator data. Revenue counts PAID delivery-fee payments, not COD. Test/demo records may affect totals.\n\nStatus must be ACTIVE, BLOCKED or INACTIVE. Account eligibility and administrator safeguards apply.\n\nResolve {{variables}} before sending; numeric values must not be quoted. \n\n### Examples and tests\nSanitized illustrative response examples show selected contract fields, not live captures. Tests expect successful, authorized input and eligible resource state. Missing variables, cookies or workflow prerequisites intentionally fail assertions. Default flags skip writes and provider callbacks.",
+                "description": "## Update account status\n\nAccess: ADMIN.\n\nDatabase-backed administrator data. Revenue counts PAID delivery-fee payments, not COD. Test/demo records may affect totals.\n\nStatus must be ACTIVE, BLOCKED or DELETED. Account eligibility and administrator safeguards apply.\n\nResolve {{variables}} before sending; numeric values must not be quoted. \n\n### Examples and tests\nSanitized illustrative response examples show selected contract fields, not live captures. Tests expect successful, authorized input and eligible resource state. Missing variables, cookies or workflow prerequisites intentionally fail assertions. Default flags skip writes and provider callbacks.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"status\": \"ACTIVE\"\n}",
@@ -7692,7 +7692,7 @@
                   "type": "noauth"
                 },
                 "url": "{{base_url}}/admin/users/{{user_id}}/status",
-                "description": "## Update account status\n\nAccess: ADMIN.\n\nDatabase-backed administrator data. Revenue counts PAID delivery-fee payments, not COD. Test/demo records may affect totals.\n\nStatus must be ACTIVE, BLOCKED or INACTIVE. Account eligibility and administrator safeguards apply.\n\nResolve {{variables}} before sending; numeric values must not be quoted. \n\n### Examples and tests\nSanitized illustrative response examples show selected contract fields, not live captures. Tests expect successful, authorized input and eligible resource state. Missing variables, cookies or workflow prerequisites intentionally fail assertions. Default flags skip writes and provider callbacks.",
+                "description": "## Update account status\n\nAccess: ADMIN.\n\nDatabase-backed administrator data. Revenue counts PAID delivery-fee payments, not COD. Test/demo records may affect totals.\n\nStatus must be ACTIVE, BLOCKED or DELETED. Account eligibility and administrator safeguards apply.\n\nResolve {{variables}} before sending; numeric values must not be quoted. \n\n### Examples and tests\nSanitized illustrative response examples show selected contract fields, not live captures. Tests expect successful, authorized input and eligible resource state. Missing variables, cookies or workflow prerequisites intentionally fail assertions. Default flags skip writes and provider callbacks.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"status\": \"ACTIVE\"\n}",

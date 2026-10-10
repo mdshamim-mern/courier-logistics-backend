@@ -19,6 +19,9 @@ test("Postman documents every current versioned and root/health route", () => {
   assert.equal(requests.length, 67);
   assert.equal(documented.size, 61);
   assert.deepEqual([...documented].sort(), [...source].sort());
+  const statusRequest = requests.find((item: { request: { url: string } }) => item.request.url === "{{base_url}}/admin/users/{{user_id}}/status");
+  assert.match(statusRequest.request.description, /ACTIVE, BLOCKED or DELETED/);
+  assert.ok(!statusRequest.request.description.includes("allowedNextStatuses"));
 });
 
 test("every request has sanitized examples and executable positive contract assertions", () => {
