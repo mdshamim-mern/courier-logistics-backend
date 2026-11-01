@@ -1,4 +1,5 @@
 import express from "express";
+import { AiRoutes } from "../modules/ai/ai.route";
 import { OperationsRoutes } from "../modules/operations/operations.route";
 import { AdminRoutes } from "../modules/admin/admin.route";
 import { AuditLogRoutes } from "../modules/auditLog/auditLog.route";
@@ -12,6 +13,7 @@ import { UserRoutes } from "../modules/user/user.route";
 const router = express.Router();
 
 const moduleRoutes = [
+  { path: "/ai", route: AiRoutes },
 	{ path: "/operations", route: OperationsRoutes },
 	{
 		path: "/auth",

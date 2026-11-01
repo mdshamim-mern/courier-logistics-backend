@@ -1,5 +1,6 @@
 import { PaymentGateway, PaymentStatus, type Prisma } from "@prisma/client";
 import Stripe from "stripe";
+import { z } from "zod";
 import config from "../../config";
 import { AppError } from "../../errors/AppError";
 import { prisma } from "../../utils/prisma";
@@ -536,9 +537,15 @@ const reconcilePayment = async (shipmentId: string, userId: string) => {
 };
 
 const getPayments = async (query: unknown, user: Actor) => {
-	const { page, limit } = listQuerySchema.parse(query);
+	const { page, limit, searchTerm, status, paymentGateway, sortOrder } = listQuerySchema.extend({
+    status: z.nativeEnum(PaymentStatus).optional(),
+    paymentGateway: z.nativeEnum(PaymentGateway).optional(),
+  }).parse(query);
 	const where: Prisma.PaymentWhereInput = {
 		isDeleted: false,
+    ...(status ? { status } : {}),
+    ...(paymentGateway ? { paymentGateway } : {}),
+    ...(searchTerm ? { OR: [{ transactionId: { contains: searchTerm, mode: "insensitive" } }, { shipment: { trackingId: { contains: searchTerm, mode: "insensitive" } } }] } : {}),
 		...(user.role === "CUSTOMER"
 			? { shipment: { senderId: user.userId } }
 			: {}),
@@ -548,7 +555,7 @@ const getPayments = async (query: unknown, user: Actor) => {
 			where,
 			skip: (page - 1) * limit,
 			take: limit,
-			orderBy: { createdAt: "desc" },
+			orderBy: { createdAt: sortOrder },
 			select: {
 				...paymentSelect,
 				shipment: {
